@@ -501,9 +501,11 @@ input[type="text"]:focus { outline: none; border-color: var(--copper-light); }
   background: var(--wood-plank); border: 2px solid var(--copper-dark);
   border-radius: 8px; padding: 0.6rem 0.4rem;
   cursor: pointer; transition: all 0.15s; text-align: center;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
 }
 .market-item:active { transform: scale(0.96); }
-.market-item.disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+.market-item.disabled { opacity: 0.35; cursor: not-allowed; transform: none; pointer-events: none; }
 .market-item.selected { border-color: var(--corn-yellow); box-shadow: 0 0 10px rgba(244,197,66,0.3); }
 .market-item .mi-icon { font-size: 1.6rem; margin-bottom: 0.2rem; }
 .market-item .mi-name { font-size: 0.75rem; color: var(--text-light); }
@@ -518,7 +520,7 @@ input[type="text"]:focus { outline: none; border-color: var(--copper-light); }
 }
 .market-cart h3 { color: var(--copper-light); font-size: 0.85rem; margin-bottom: 0.3rem; }
 #cart-items { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
-.cart-chip { display: flex; align-items: center; gap: 0.3rem; background: var(--wood-plank); padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.85rem; }
+.cart-chip { display: flex; align-items: center; gap: 0.3rem; background: var(--wood-plank); padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.85rem; cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
 
 .btn-done-buying {
   width: 100%; font-size: 1.1rem; padding: 0.9rem;

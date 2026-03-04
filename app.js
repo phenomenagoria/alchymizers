@@ -268,6 +268,12 @@ function initGame(seed, playerInfos) {
 
   showScreen('game');
   addSystemMessage(els.chatMessages, 'The distilling season begins!');
+  if (networkMode !== 'solo') {
+    const code = els.roomCode.textContent;
+    if (code) {
+      game.log.push(`Room code: ${code}`);
+    }
+  }
   updateUI();
 }
 
@@ -310,13 +316,9 @@ function updateUI() {
   // Phase-specific UI
   handlePhaseUI();
 
-  // Refresh market items/cart if market overlay is showing
+  // Refresh market if overlay is showing
   if (screens.market.classList.contains('active')) {
-    const discount = game.roundModifiers.discount || 0;
-    const maxBuys = game.roundModifiers.buyLimit || MAX_BUYS_PER_ROUND;
-    els.marketDollars.textContent = `$${player.dollars}`;
-    renderMarketItems(player, discount, maxBuys);
-    renderCart();
+    refreshMarket();
   }
 }
 
@@ -324,11 +326,43 @@ function updateActionButtons(player) {
   const canAct = game.phase === PHASES.DISTILL && !player.stopped && !player.blownOut;
   const drawBtn = document.getElementById('btn-draw');
   const stopBtn = document.getElementById('btn-stop');
+  let backBtn = document.getElementById('btn-back-to-market');
 
   drawBtn.disabled = !canAct || player.bag.length === 0;
   stopBtn.disabled = !canAct;
 
-  els.actionButtons.classList.toggle('hidden', game.phase !== PHASES.DISTILL);
+  // Show draw/stop during DISTILL, "Back to Market" during MARKET if overlay closed
+  const marketHidden = game.phase === PHASES.MARKET && !screens.market.classList.contains('active');
+
+  if (game.phase === PHASES.DISTILL) {
+    drawBtn.classList.remove('hidden');
+    stopBtn.classList.remove('hidden');
+    if (backBtn) backBtn.classList.add('hidden');
+    els.actionButtons.classList.remove('hidden');
+  } else if (marketHidden) {
+    drawBtn.classList.add('hidden');
+    stopBtn.classList.add('hidden');
+    // Create back-to-market button if needed
+    if (!backBtn) {
+      backBtn = document.createElement('button');
+      backBtn.id = 'btn-back-to-market';
+      backBtn.className = 'btn btn-primary';
+      backBtn.style.flex = '1';
+      backBtn.textContent = 'Back to Market';
+      backBtn.addEventListener('click', () => {
+        showOverlay('market');
+        refreshMarket();
+      });
+      els.actionButtons.appendChild(backBtn);
+    }
+    backBtn.classList.remove('hidden');
+    els.actionButtons.classList.remove('hidden');
+  } else {
+    drawBtn.classList.remove('hidden');
+    stopBtn.classList.remove('hidden');
+    if (backBtn) backBtn.classList.add('hidden');
+    els.actionButtons.classList.add('hidden');
+  }
 
   // Show blowout choice if player blew out and hasn't chosen yet
   const showBlowout = player.blownOut && !player._blowoutChosen &&
@@ -440,9 +474,17 @@ function sendChatMessage() {
 }
 
 // ===== Market =====
-let marketCart = []; // { color, value, cost }
 
 function showMarket() {
+  const player = getPlayerState(game, myPlayerId);
+  if (!player) return;
+
+  els.marketBuyLimit.textContent = game.roundModifiers.buyLimit || MAX_BUYS_PER_ROUND;
+  refreshMarket();
+  showOverlay('market');
+}
+
+function refreshMarket() {
   const player = getPlayerState(game, myPlayerId);
   if (!player) return;
 
@@ -450,15 +492,8 @@ function showMarket() {
   const maxBuys = game.roundModifiers.buyLimit || MAX_BUYS_PER_ROUND;
 
   els.marketDollars.textContent = `$${player.dollars}`;
-  els.marketBuyLimit.textContent = maxBuys;
-  marketCart = [];
 
-  renderMarketItems(player, discount, maxBuys);
-  renderCart();
-  showOverlay('market');
-}
-
-function renderMarketItems(player, discount, maxBuys) {
+  // Render shop items with data attributes for event delegation
   const items = getShopItems(discount);
   els.marketItems.innerHTML = '';
 
@@ -468,10 +503,12 @@ function renderMarketItems(player, discount, maxBuys) {
 
     const canBuy = player.dollars >= item.cost &&
                    player.boughtThisRound.length < maxBuys &&
-                   !player.boughtThisRound.includes(item.color) &&
-                   !marketCart.some(c => c.color === item.color);
+                   !player.boughtThisRound.includes(item.color);
 
     if (!canBuy) div.classList.add('disabled');
+
+    div.dataset.color = item.color;
+    div.dataset.value = item.value;
 
     div.innerHTML = `
       <div class="mi-icon">${item.icon}</div>
@@ -481,38 +518,17 @@ function renderMarketItems(player, discount, maxBuys) {
       <div class="mi-desc">${INGREDIENTS[item.color].description}</div>
     `;
 
-    if (canBuy) {
-      div.addEventListener('click', () => {
-        doBuy(item.color, item.value);
-      });
-    }
-
     els.marketItems.appendChild(div);
   });
-}
 
-function doBuy(color, value) {
-  if (networkMode === 'solo') {
-    buyIngredient(game, myPlayerId, color, value);
-    updateUI();
-  } else {
-    network.sendAction(myPlayerId, ACTIONS.BUY, { color, value });
-  }
-}
-
-function renderCart() {
-  const player = getPlayerState(game, myPlayerId);
-  if (!player) return;
-
+  // Render cart
   els.cartItems.innerHTML = '';
   player.boughtThisRound.forEach(color => {
     const div = document.createElement('div');
     div.className = 'cart-chip';
+    div.dataset.unbuyColor = color;
     div.innerHTML = `${INGREDIENTS[color].icon} ${INGREDIENTS[color].name} <span class="remove-btn">✕</span>`;
     div.style.cursor = 'pointer';
-    div.addEventListener('click', () => {
-      doUnbuy(color);
-    });
     els.cartItems.appendChild(div);
   });
 
@@ -521,28 +537,45 @@ function renderCart() {
   }
 }
 
-function doUnbuy(color) {
+// Event delegation: market item clicks
+els.marketItems.addEventListener('click', (e) => {
+  const item = e.target.closest('.market-item');
+  if (!item || item.classList.contains('disabled')) return;
+  const color = item.dataset.color;
+  const value = Number(item.dataset.value);
+  if (!color) return;
+
+  if (networkMode === 'solo') {
+    buyIngredient(game, myPlayerId, color, value);
+    refreshMarket();
+    updateUI();
+  } else {
+    network.sendAction(myPlayerId, ACTIONS.BUY, { color, value });
+  }
+});
+
+// Event delegation: cart item clicks (unbuy)
+els.cartItems.addEventListener('click', (e) => {
+  const chip = e.target.closest('.cart-chip');
+  if (!chip) return;
+  const color = chip.dataset.unbuyColor;
+  if (!color) return;
+
   if (networkMode === 'solo') {
     unbuyIngredient(game, myPlayerId, color);
+    refreshMarket();
     updateUI();
   } else {
     network.sendAction(myPlayerId, ACTIONS.UNBUY, { color });
   }
-}
-
-// Market close button (same as done buying)
-document.getElementById('btn-market-close').addEventListener('click', () => {
-  if (networkMode === 'solo') {
-    finishBuying(game, myPlayerId);
-    hideOverlay('market');
-    updateUI();
-  } else {
-    network.sendAction(myPlayerId, ACTIONS.DONE_BUYING);
-    hideOverlay('market');
-  }
 });
 
-// Done buying
+// Market close button — just hides the overlay (does NOT finalize)
+document.getElementById('btn-market-close').addEventListener('click', () => {
+  hideOverlay('market');
+});
+
+// Done buying — finalizes purchases and advances the round
 document.getElementById('btn-done-buying').addEventListener('click', () => {
   if (networkMode === 'solo') {
     finishBuying(game, myPlayerId);
