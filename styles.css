@@ -114,8 +114,17 @@ body {
   text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
   margin-bottom: 0.3rem;
 }
-.game-subtitle { font-size: 1rem; color: var(--text-dim); margin-bottom: 0.8rem; }
-.title-art { font-size: 1.8rem; margin-bottom: 1.5rem; letter-spacing: 0.4rem; }
+.game-subtitle { font-size: 1rem; color: var(--text-dim); margin-bottom: 0.2rem; }
+.game-version { font-size: 0.7rem; color: var(--copper-dark); margin-bottom: 1rem; letter-spacing: 2px; }
+
+.pixel-scene { margin-bottom: 0.8rem; }
+.pixel-scene canvas {
+  width: 100%; max-width: 320px; height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border-radius: 6px;
+  border: 2px solid var(--copper-dark);
+}
 .title-buttons { display: flex; flex-direction: column; gap: 0.7rem; margin-bottom: 1.2rem; }
 
 .input-area { margin-bottom: 1rem; }

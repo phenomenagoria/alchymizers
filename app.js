@@ -12,6 +12,7 @@ import { renderLeaderboard } from './ui/leaderboard.js';
 import { addChatMessage, addSystemMessage, updateGameLog } from './ui/chat.js';
 import { createNetworkManager } from './network/peer.js';
 import { ACTIONS } from './network/messages.js';
+import { drawPixelScene } from './ui/pixelScene.js';
 
 // ===== App State =====
 let game = null;
@@ -616,6 +617,10 @@ function escapeHtml(text) {
 
 // ===== Init =====
 checkJoinLink();
+
+// Draw pixel art scene on title screen
+const pixelCanvas = document.getElementById('pixel-canvas');
+if (pixelCanvas) drawPixelScene(pixelCanvas);
 
 // Generate a random default name
 const defaultNames = ['Granny Mae', 'Whiskey Jack', 'Copper Tom', 'Bootleg Billy', 'Sweet Sally', 'Moonshine Mike'];
