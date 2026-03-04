@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alchymizers — Backcountry Moonshine Distillers</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- ===== TITLE SCREEN ===== -->
+  <div id="screen-title" class="screen active">
+    <div class="title-container">
+      <h1 class="game-title">Alchymizers</h1>
+      <p class="game-subtitle">Backcountry Moonshine Distillers</p>
+      <div class="title-art">🏔️ 🌲 🥃 🌲 🏔️</div>
+
+      <div class="title-buttons">
+        <button id="btn-solo" class="btn btn-primary">Play Solo</button>
+        <button id="btn-create" class="btn btn-secondary">Create Room</button>
+        <button id="btn-join" class="btn btn-secondary">Join Room</button>
+      </div>
+
+      <div id="name-input-area" class="input-area">
+        <label for="player-name">Your Name:</label>
+        <input type="text" id="player-name" placeholder="Enter your distiller name" maxlength="16" value="">
+      </div>
+
+      <!-- Join room panel -->
+      <div id="join-panel" class="panel hidden">
+        <label for="join-host-id">Host ID:</label>
+        <input type="text" id="join-host-id" placeholder="Paste host peer ID">
+        <button id="btn-join-connect" class="btn btn-primary">Connect</button>
+      </div>
+
+      <p id="title-status" class="status-text"></p>
+    </div>
+  </div>
+
+  <!-- ===== LOBBY SCREEN ===== -->
+  <div id="screen-lobby" class="screen">
+    <div class="lobby-container">
+      <h2>Moonshine Shack</h2>
+      <div id="room-info" class="room-info">
+        <p>Room Code: <span id="room-code" class="mono"></span></p>
+        <p>Share this ID: <span id="host-peer-id" class="mono selectable"></span></p>
+        <button id="btn-copy-id" class="btn btn-small">Copy</button>
+      </div>
+      <div id="lobby-players" class="player-list">
+        <!-- Player cards go here -->
+      </div>
+      <button id="btn-start-game" class="btn btn-primary hidden">Start Distilling!</button>
+      <p id="lobby-status" class="status-text"></p>
+    </div>
+  </div>
+
+  <!-- ===== GAME SCREEN ===== -->
+  <div id="screen-game" class="screen">
+    <div class="game-layout">
+      <!-- Top bar -->
+      <div class="game-topbar">
+        <div class="round-info">
+          <span id="round-display">Round 1 / 9</span>
+          <span id="phase-display" class="phase-badge">DISTILL</span>
+        </div>
+        <div id="holler-card" class="holler-card hidden">
+          <div class="holler-name"></div>
+          <div class="holler-desc"></div>
+        </div>
+      </div>
+
+      <!-- Main game area -->
+      <div class="game-main">
+        <!-- Left: Board -->
+        <div class="game-board-area">
+          <!-- Player stats -->
+          <div id="player-stats" class="player-stats">
+            <div class="stat">
+              <span class="stat-label">Dollars</span>
+              <span id="stat-dollars" class="stat-value">$0</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Reputation</span>
+              <span id="stat-rep" class="stat-value">0</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Copper</span>
+              <span id="stat-copper" class="stat-value">0</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Bag</span>
+              <span id="stat-bag" class="stat-value">9</span>
+            </div>
+          </div>
+
+          <!-- Copper coil track -->
+          <div id="coil-track" class="coil-track">
+            <!-- Track spaces rendered by JS -->
+          </div>
+
+          <!-- Still area (placed chips + blowout meter) -->
+          <div class="still-area">
+            <div class="still-header">
+              <span>🫗 The Still</span>
+              <div class="blowout-meter">
+                <span>Bad Mash:</span>
+                <div id="blowout-bar" class="blowout-bar">
+                  <div id="blowout-fill" class="blowout-fill"></div>
+                </div>
+                <span id="blowout-value">0 / 7</span>
+              </div>
+            </div>
+            <div id="placed-chips" class="placed-chips">
+              <!-- Placed chips rendered here -->
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div id="action-buttons" class="action-buttons">
+            <button id="btn-draw" class="btn btn-draw">🎲 Draw from Stash</button>
+            <button id="btn-stop" class="btn btn-stop">✋ Stop & Collect</button>
+          </div>
+
+          <!-- Blowout choice -->
+          <div id="blowout-choice" class="blowout-choice hidden">
+            <p>💥 BLOWOUT! Your still blew its lid! Choose one:</p>
+            <button id="btn-choose-dollars" class="btn btn-secondary">💵 Keep Dollars</button>
+            <button id="btn-choose-rep" class="btn btn-secondary">🏆 Keep Reputation</button>
+          </div>
+
+          <!-- Copper spending -->
+          <div id="copper-spend" class="copper-spend hidden">
+            <button id="btn-spend-copper" class="btn btn-small">🔥 Upgrade Still (2 copper → +1 flame)</button>
+          </div>
+        </div>
+
+        <!-- Right: Sidebar -->
+        <div class="game-sidebar">
+          <!-- Leaderboard -->
+          <div class="sidebar-section">
+            <h3>🏆 Leaderboard</h3>
+            <div id="leaderboard" class="leaderboard">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <!-- Chat -->
+          <div class="sidebar-section chat-section">
+            <h3>💬 Chat</h3>
+            <div id="chat-messages" class="chat-messages">
+              <!-- Messages rendered here -->
+            </div>
+            <div class="chat-input-area">
+              <input type="text" id="chat-input" placeholder="Type a message..." maxlength="200">
+              <button id="btn-chat-send" class="btn btn-small">Send</button>
+            </div>
+          </div>
+
+          <!-- Game log -->
+          <div class="sidebar-section">
+            <h3>📜 Log</h3>
+            <div id="game-log" class="game-log">
+              <!-- Log entries -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MARKET SCREEN (overlay) ===== -->
+  <div id="screen-market" class="screen overlay">
+    <div class="market-container">
+      <h2>🛒 Old Maggie's Supply Wagon</h2>
+      <p class="market-subtitle">Buy up to <span id="market-buy-limit">2</span> ingredients (different colors). You have <span id="market-dollars">$0</span>.</p>
+      <div id="market-items" class="market-items">
+        <!-- Rendered by JS -->
+      </div>
+      <div id="market-cart" class="market-cart">
+        <h3>Your Cart:</h3>
+        <div id="cart-items"></div>
+      </div>
+      <button id="btn-done-buying" class="btn btn-primary">Done Buying</button>
+    </div>
+  </div>
+
+  <!-- ===== ENDGAME SCREEN ===== -->
+  <div id="screen-endgame" class="screen">
+    <div class="endgame-container">
+      <h2>🏆 Master Distiller of the Mountains</h2>
+      <div id="endgame-winner" class="winner-display">
+        <!-- Winner info -->
+      </div>
+      <div id="endgame-scores" class="endgame-scores">
+        <!-- Final standings -->
+      </div>
+      <button id="btn-play-again" class="btn btn-primary">Play Again</button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

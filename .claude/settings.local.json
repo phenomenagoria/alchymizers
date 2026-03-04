@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth status)",
+      "Bash(gh --version 2>&1; gh auth status 2>&1)"
+    ]
+  }
+}
