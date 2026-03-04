@@ -309,6 +309,15 @@ function updateUI() {
 
   // Phase-specific UI
   handlePhaseUI();
+
+  // Refresh market items/cart if market overlay is showing
+  if (screens.market.classList.contains('active')) {
+    const discount = game.roundModifiers.discount || 0;
+    const maxBuys = game.roundModifiers.buyLimit || MAX_BUYS_PER_ROUND;
+    els.marketDollars.textContent = `$${player.dollars}`;
+    renderMarketItems(player, discount, maxBuys);
+    renderCart();
+  }
 }
 
 function updateActionButtons(player) {
@@ -486,13 +495,6 @@ function doBuy(color, value) {
   if (networkMode === 'solo') {
     buyIngredient(game, myPlayerId, color, value);
     updateUI();
-    // Re-render market
-    const player = getPlayerState(game, myPlayerId);
-    const discount = game.roundModifiers.discount || 0;
-    const maxBuys = game.roundModifiers.buyLimit || MAX_BUYS_PER_ROUND;
-    els.marketDollars.textContent = `$${player.dollars}`;
-    renderMarketItems(player, discount, maxBuys);
-    renderCart();
   } else {
     network.sendAction(myPlayerId, ACTIONS.BUY, { color, value });
   }
@@ -523,12 +525,6 @@ function doUnbuy(color) {
   if (networkMode === 'solo') {
     unbuyIngredient(game, myPlayerId, color);
     updateUI();
-    const player = getPlayerState(game, myPlayerId);
-    const discount = game.roundModifiers.discount || 0;
-    const maxBuys = game.roundModifiers.buyLimit || MAX_BUYS_PER_ROUND;
-    els.marketDollars.textContent = `$${player.dollars}`;
-    renderMarketItems(player, discount, maxBuys);
-    renderCart();
   } else {
     network.sendAction(myPlayerId, ACTIONS.UNBUY, { color });
   }
