@@ -552,6 +552,7 @@ function cleanupRound(game) {
     player.boughtThisRound = [];
     player.chipCount = 0;
     player._doneBuying = false;
+    player._blowoutChosen = false;
   }
 
   // Next round
