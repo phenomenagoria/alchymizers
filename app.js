@@ -7,7 +7,7 @@ import {
   TRACK, BLOWOUT_THRESHOLD, INGREDIENTS, TOTAL_ROUNDS,
   getShopItems, MAX_BUYS_PER_ROUND,
 } from './engine/rules.js';
-import { renderTrack, renderPlacedChips, updateBlowoutMeter, updatePlayerStats, showHollerCard, updateRoundPhase } from './ui/board.js';
+import { renderPressure, renderProofGauge, renderPlacedChips, updatePlayerStats, showHollerCard, updateRoundPhase } from './ui/board.js';
 import { renderLeaderboard } from './ui/leaderboard.js';
 import { addChatMessage, addSystemMessage, updateGameLog } from './ui/chat.js';
 import { createNetworkManager } from './network/peer.js';
@@ -40,10 +40,10 @@ const els = {
   hostPeerId: document.getElementById('host-peer-id'),
   lobbyPlayers: document.getElementById('lobby-players'),
   btnStartGame: document.getElementById('btn-start-game'),
-  coilTrack: document.getElementById('coil-track'),
   placedChips: document.getElementById('placed-chips'),
-  blowoutFill: document.getElementById('blowout-fill'),
-  blowoutValue: document.getElementById('blowout-value'),
+  pressureSegments: document.getElementById('pressure-segments'),
+  pressureNumber: document.getElementById('pressure-number'),
+  pressureStatus: document.getElementById('pressure-status'),
   hollerCard: document.getElementById('holler-card'),
   actionButtons: document.getElementById('action-buttons'),
   blowoutChoice: document.getElementById('blowout-choice'),
@@ -282,15 +282,15 @@ function updateUI() {
   // Player stats
   updatePlayerStats(player);
 
-  // Track
+  // Pressure gauge (blowout meter)
   const threshold = BLOWOUT_THRESHOLD - (game.roundModifiers.thresholdReduction || 0);
-  renderTrack(els.coilTrack, player.position, player.flameStart, threshold);
+  renderPressure(els.pressureSegments, els.pressureNumber, els.pressureStatus, player.whiteTotal, threshold);
+
+  // Proof gauge (track position)
+  renderProofGauge(player);
 
   // Placed chips
   renderPlacedChips(els.placedChips, player.pot);
-
-  // Blowout meter
-  updateBlowoutMeter(els.blowoutFill, els.blowoutValue, player.whiteTotal, threshold);
 
   // Leaderboard
   const lb = getLeaderboard(game);
@@ -509,6 +509,18 @@ function renderCart() {
     els.cartItems.innerHTML = '<span style="color: var(--text-dim);">Nothing yet...</span>';
   }
 }
+
+// Market close button (same as done buying)
+document.getElementById('btn-market-close').addEventListener('click', () => {
+  if (networkMode === 'solo') {
+    finishBuying(game, myPlayerId);
+    hideOverlay('market');
+    updateUI();
+  } else {
+    network.sendAction(myPlayerId, ACTIONS.DONE_BUYING);
+    hideOverlay('market');
+  }
+});
 
 // Done buying
 document.getElementById('btn-done-buying').addEventListener('click', () => {

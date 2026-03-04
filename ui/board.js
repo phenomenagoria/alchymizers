@@ -1,90 +1,98 @@
-import { TRACK, TRACK_MAX, INGREDIENTS, COLOR_HEX, BLOWOUT_THRESHOLD } from '../engine/rules.js';
+import { TRACK, TRACK_MAX, INGREDIENTS, BLOWOUT_THRESHOLD } from '../engine/rules.js';
 
-// Render the copper coil track
-export function renderTrack(container, playerPosition, flameStart, threshold) {
-  container.innerHTML = '';
-  const effectiveThreshold = threshold || BLOWOUT_THRESHOLD;
+// Render the pressure gauge (blowout meter) as visual segments
+export function renderPressure(segmentsEl, numberEl, statusEl, whiteTotal, threshold) {
+  const t = threshold || BLOWOUT_THRESHOLD;
+  const blown = whiteTotal > t;
 
-  // Render track in rows of 7 (snaking path like a copper coil)
-  const rowSize = 7;
-  const rows = [];
-  for (let i = 0; i < TRACK.length; i += rowSize) {
-    rows.push(TRACK.slice(i, i + rowSize));
+  // Render segments
+  segmentsEl.innerHTML = '';
+  for (let i = 1; i <= t; i++) {
+    const seg = document.createElement('div');
+    seg.className = 'pressure-seg';
+
+    if (blown) {
+      seg.classList.add('blown');
+    } else if (i <= whiteTotal) {
+      if (whiteTotal <= Math.floor(t * 0.4)) seg.classList.add('filled-low');
+      else if (whiteTotal <= Math.floor(t * 0.7)) seg.classList.add('filled-mid');
+      else if (whiteTotal < t) seg.classList.add('filled-high');
+      else seg.classList.add('filled-danger');
+    } else {
+      seg.classList.add('empty');
+    }
+
+    segmentsEl.appendChild(seg);
   }
 
-  // Reverse even rows for snake pattern
-  rows.forEach((row, rowIdx) => {
-    if (rowIdx % 2 === 1) row.reverse();
-  });
+  // Number display
+  numberEl.textContent = `${whiteTotal} / ${t}`;
+  numberEl.className = 'pressure-number';
+  if (blown) numberEl.classList.add('blown');
+  else if (whiteTotal >= t) numberEl.classList.add('danger');
+  else if (whiteTotal >= Math.floor(t * 0.7)) numberEl.classList.add('critical');
+  else if (whiteTotal >= Math.floor(t * 0.4)) numberEl.classList.add('warning');
+  else numberEl.classList.add('safe');
 
-  // Render each row
-  rows.forEach((row) => {
-    const rowDiv = document.createElement('div');
-    rowDiv.style.display = 'flex';
-    rowDiv.style.gap = '3px';
-    rowDiv.style.justifyContent = 'center';
+  // Status text
+  if (blown) {
+    statusEl.textContent = '💥 BLOWN OUT!';
+    statusEl.className = 'pressure-status blown';
+  } else if (whiteTotal >= t) {
+    statusEl.textContent = '🔴 Critical!';
+    statusEl.className = 'pressure-status danger';
+  } else if (whiteTotal >= Math.floor(t * 0.7)) {
+    statusEl.textContent = '🟠 Dangerous';
+    statusEl.className = 'pressure-status critical';
+  } else if (whiteTotal >= Math.floor(t * 0.4)) {
+    statusEl.textContent = '🟡 Rising';
+    statusEl.className = 'pressure-status warning';
+  } else {
+    statusEl.textContent = '🟢 Stable';
+    statusEl.className = 'pressure-status safe';
+  }
+}
 
-    row.forEach(space => {
-      const spaceDiv = document.createElement('div');
-      spaceDiv.className = 'track-space';
+// Render proof gauge (track position as a progress bar)
+export function renderProofGauge(player) {
+  const pos = player.position;
+  const flame = player.flameStart;
+  const pct = (pos / TRACK_MAX) * 100;
+  const flamePct = (flame / TRACK_MAX) * 100;
 
-      if (space.pos === playerPosition) {
-        spaceDiv.classList.add('current');
-      } else if (space.pos < playerPosition && space.pos >= flameStart) {
-        spaceDiv.classList.add('passed');
-      }
+  const fillEl = document.getElementById('proof-fill');
+  const markerEl = document.getElementById('proof-marker');
+  const flameEl = document.getElementById('proof-flame');
+  const posEl = document.getElementById('proof-position');
+  const rewardsEl = document.getElementById('proof-rewards');
 
-      if (space.pos === flameStart) {
-        spaceDiv.classList.add('flame-start');
-      }
+  fillEl.style.width = `${pct}%`;
+  markerEl.style.left = `calc(${pct}% - 7px)`;
+  flameEl.style.left = `${flamePct}%`;
+  posEl.textContent = `Position ${pos} / ${TRACK_MAX}`;
 
-      // Position number
-      const posSpan = document.createElement('span');
-      posSpan.className = 'space-pos';
-      posSpan.textContent = space.pos;
-      spaceDiv.appendChild(posSpan);
+  // Show rewards at current position
+  const space = TRACK[pos] || TRACK[0];
+  let specialText = '';
+  if (space.special === 'copper') specialText = ' 🔶+1';
+  else if (space.special === 'flame') specialText = ' 🔥+1';
 
-      // Coins
-      if (space.coins > 0) {
-        const coinSpan = document.createElement('span');
-        coinSpan.className = 'space-coins';
-        coinSpan.textContent = `$${space.coins}`;
-        spaceDiv.appendChild(coinSpan);
-      }
-
-      // VP
-      if (space.vp > 0) {
-        const vpSpan = document.createElement('span');
-        vpSpan.className = 'space-vp';
-        vpSpan.textContent = `★${space.vp}`;
-        spaceDiv.appendChild(vpSpan);
-      }
-
-      // Special icon
-      if (space.special) {
-        const specialSpan = document.createElement('span');
-        specialSpan.className = 'space-special';
-        if (space.special === 'copper') specialSpan.textContent = '🔶';
-        else if (space.special === 'flame') specialSpan.textContent = '🔥';
-        spaceDiv.appendChild(specialSpan);
-      }
-
-      rowDiv.appendChild(spaceDiv);
-    });
-
-    container.appendChild(rowDiv);
-  });
+  rewardsEl.innerHTML = `
+    <span class="reward-dollars">💵 $${space.coins}</span>
+    <span class="reward-rep">⭐ ${space.vp}</span>
+    ${specialText ? `<span style="color: var(--copper-light)">${specialText}</span>` : ''}
+  `;
 }
 
 // Render placed chips in the still
 export function renderPlacedChips(container, chips) {
   container.innerHTML = '';
   if (chips.length === 0) {
-    container.innerHTML = '<span style="color: var(--text-dim); font-size: 0.8rem;">No chips placed yet...</span>';
+    container.innerHTML = '<span class="still-empty">Draw ingredients from your stash...</span>';
     return;
   }
 
-  chips.forEach((chip, idx) => {
+  chips.forEach((chip) => {
     const chipDiv = document.createElement('div');
     chipDiv.className = `chip ${chip.color}`;
 
@@ -98,28 +106,16 @@ export function renderPlacedChips(container, chips) {
     value.textContent = chip.value;
     chipDiv.appendChild(value);
 
+    const name = document.createElement('span');
+    name.className = 'chip-name';
+    name.textContent = INGREDIENTS[chip.color]?.name || '';
+    chipDiv.appendChild(name);
+
     container.appendChild(chipDiv);
   });
-}
 
-// Update the blowout meter
-export function updateBlowoutMeter(fillEl, valueEl, whiteTotal, threshold) {
-  const effectiveThreshold = threshold || BLOWOUT_THRESHOLD;
-  const pct = Math.min(100, (whiteTotal / effectiveThreshold) * 100);
-
-  fillEl.style.width = `${pct}%`;
-  fillEl.className = 'blowout-fill';
-
-  if (whiteTotal > effectiveThreshold) {
-    fillEl.classList.add('blown');
-    fillEl.style.width = '100%';
-  } else if (pct >= 75) {
-    fillEl.classList.add('danger');
-  } else if (pct >= 50) {
-    fillEl.classList.add('warning');
-  }
-
-  valueEl.textContent = `${whiteTotal} / ${effectiveThreshold}`;
+  // Auto-scroll to show latest chip
+  container.scrollLeft = container.scrollWidth;
 }
 
 // Update player stats display
