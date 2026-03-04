@@ -143,6 +143,20 @@ input[type="text"]:focus { outline: none; border-color: var(--copper-light); }
 .mono { font-family: 'Courier New', monospace; background: var(--wood-dark); padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.8rem; user-select: all; word-break: break-all; }
 .selectable { cursor: pointer; }
 
+.room-code-display {
+  margin: 0.5rem 0;
+}
+.room-code-display .mono {
+  font-size: 2rem;
+  letter-spacing: 6px;
+  padding: 0.5rem 1rem;
+  color: var(--corn-yellow);
+  background: var(--wood-dark);
+  border: 2px solid var(--copper);
+  border-radius: 8px;
+  display: inline-block;
+}
+
 /* ===== Lobby Screen ===== */
 #screen-lobby { align-items: center; justify-content: center; }
 .lobby-container { text-align: center; max-width: 500px; padding: 2rem; }

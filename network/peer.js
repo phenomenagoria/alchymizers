@@ -1,7 +1,10 @@
 import { MSG, createMsg } from './messages.js';
 
 // PeerJS networking module
-// Star topology: all clients connect to host, host relays
+// Star topology: host uses deterministic peer ID from room code
+// Clients connect using the same room code — no need to share long IDs
+
+const PEER_PREFIX = 'alchymizers-';
 
 export function createNetworkManager(callbacks) {
   let peer = null;
@@ -10,6 +13,7 @@ export function createNetworkManager(callbacks) {
   let hostConnection = null;  // client's connection to host
   let myPeerId = null;
   let actionSeq = 0;
+  let roomCode = null;
 
   const {
     onConnected,
@@ -27,21 +31,32 @@ export function createNetworkManager(callbacks) {
     if (onStatusChange) onStatusChange(msg);
   }
 
-  // Host: Create a room
-  function createRoom() {
+  function peerIdFromCode(code) {
+    return PEER_PREFIX + code.toLowerCase();
+  }
+
+  // Host: Create a room with a deterministic peer ID
+  function createRoom(code) {
     return new Promise((resolve, reject) => {
       isHost = true;
-      peer = new Peer();
+      roomCode = code;
+      const deterministicId = peerIdFromCode(code);
+
+      peer = new Peer(deterministicId);
 
       peer.on('open', (id) => {
         myPeerId = id;
-        setStatus('Room created. Waiting for players...');
+        setStatus('Room created. Share the code with friends!');
         setupHostListeners();
-        resolve(id);
+        resolve(code);
       });
 
       peer.on('error', (err) => {
-        setStatus(`Error: ${err.message}`);
+        if (err.type === 'unavailable-id') {
+          setStatus('Room code already in use. Try another.');
+        } else {
+          setStatus(`Error: ${err.message}`);
+        }
         if (onError) onError(err);
         reject(err);
       });
@@ -51,7 +66,6 @@ export function createNetworkManager(callbacks) {
   function setupHostListeners() {
     peer.on('connection', (conn) => {
       conn.on('open', () => {
-        // Wait for HELLO message
         conn.on('data', (msg) => handleHostMessage(conn, msg));
       });
 
@@ -92,7 +106,6 @@ export function createNetworkManager(callbacks) {
       }
 
       case MSG.ACTION_SUBMIT: {
-        // Assign sequence number and broadcast
         const action = createMsg(MSG.ACTION, {
           seq: ++actionSeq,
           playerId: msg.payload.playerId,
@@ -100,7 +113,6 @@ export function createNetworkManager(callbacks) {
           data: msg.payload.data,
         });
         broadcast(action);
-        // Also apply locally (host is a player too)
         if (onAction) onAction(action.payload);
         break;
       }
@@ -112,29 +124,31 @@ export function createNetworkManager(callbacks) {
       }
 
       case MSG.STATE_HASH: {
-        // Could compare hashes here
         break;
       }
     }
   }
 
-  // Client: Join a room
-  function joinRoom(hostId, playerName) {
+  // Client: Join a room using the 6-char code
+  function joinRoom(code, playerName) {
     return new Promise((resolve, reject) => {
       isHost = false;
+      roomCode = code;
+      const hostPeerId = peerIdFromCode(code);
+
       peer = new Peer();
 
       peer.on('open', (id) => {
         myPeerId = id;
-        setStatus('Connecting to host...');
+        setStatus('Connecting to room...');
 
-        hostConnection = peer.connect(hostId, { reliable: true });
+        hostConnection = peer.connect(hostPeerId, { reliable: true });
 
         hostConnection.on('open', () => {
           hostConnection.send(createMsg(MSG.HELLO, {
             name: playerName,
           }));
-          setStatus('Connected! Waiting for welcome...');
+          setStatus('Connected! Waiting for host...');
         });
 
         hostConnection.on('data', (msg) => {
@@ -153,7 +167,11 @@ export function createNetworkManager(callbacks) {
       });
 
       peer.on('error', (err) => {
-        setStatus(`Error: ${err.message}`);
+        if (err.type === 'peer-unavailable') {
+          setStatus('Room not found. Check the code and try again.');
+        } else {
+          setStatus(`Error: ${err.message}`);
+        }
         if (onError) onError(err);
         reject(err);
       });
@@ -194,12 +212,10 @@ export function createNetworkManager(callbacks) {
         break;
 
       case MSG.PHASE_CHANGE:
-        // Handled through actions
         break;
     }
   }
 
-  // Broadcast a message to all connected peers
   function broadcast(msg, excludePeerId) {
     for (const [peerId, conn] of connections) {
       if (peerId !== excludePeerId) {
@@ -208,12 +224,10 @@ export function createNetworkManager(callbacks) {
     }
   }
 
-  // Send an action (client → host, or host processes directly)
   function sendAction(playerId, action, data = {}) {
     const msg = createMsg(MSG.ACTION_SUBMIT, { playerId, action, data });
 
     if (isHost) {
-      // Host processes it directly
       const actionMsg = createMsg(MSG.ACTION, {
         seq: ++actionSeq,
         playerId,
@@ -227,7 +241,6 @@ export function createNetworkManager(callbacks) {
     }
   }
 
-  // Send chat message
   function sendChat(playerName, message) {
     const msg = createMsg(MSG.CHAT, { playerName, message });
 
@@ -239,7 +252,6 @@ export function createNetworkManager(callbacks) {
     }
   }
 
-  // Host: Start the game
   function startGame(gameData) {
     if (!isHost) return;
     const msg = createMsg(MSG.GAME_START, gameData);
@@ -260,6 +272,7 @@ export function createNetworkManager(callbacks) {
     return list;
   }
 
+  function getRoomCode() { return roomCode; }
   function getMyPeerId() { return myPeerId; }
   function getIsHost() { return isHost; }
   function getConnectionCount() { return connections.size; }
@@ -268,6 +281,7 @@ export function createNetworkManager(callbacks) {
     if (peer) peer.destroy();
     connections.clear();
     hostConnection = null;
+    roomCode = null;
   }
 
   return {
@@ -276,6 +290,7 @@ export function createNetworkManager(callbacks) {
     sendAction,
     sendChat,
     startGame,
+    getRoomCode,
     getMyPeerId,
     getIsHost,
     getConnectionCount,

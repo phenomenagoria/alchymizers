@@ -30,8 +30,8 @@
       </div>
 
       <div id="join-panel" class="panel hidden">
-        <label for="join-host-id">Host ID:</label>
-        <input type="text" id="join-host-id" placeholder="Paste host peer ID">
+        <label for="join-host-id">Room Code:</label>
+        <input type="text" id="join-host-id" placeholder="Enter 6-letter code" maxlength="6" style="text-transform: uppercase; letter-spacing: 2px; text-align: center;">
         <button id="btn-join-connect" class="btn btn-primary">Connect</button>
       </div>
 
@@ -44,9 +44,11 @@
     <div class="lobby-container">
       <h2>Moonshine Shack</h2>
       <div id="room-info" class="room-info">
-        <p>Room Code: <span id="room-code" class="mono"></span></p>
-        <p>Share this ID: <span id="host-peer-id" class="mono selectable"></span></p>
-        <button id="btn-copy-id" class="btn btn-small">Copy</button>
+        <p>Room Code:</p>
+        <p class="room-code-display"><span id="room-code" class="mono"></span></p>
+        <span id="host-peer-id" class="hidden"></span>
+        <p style="font-size: 0.85em; opacity: 0.7;">Share this code with friends to join</p>
+        <button id="btn-copy-id" class="btn btn-small">Copy Code</button>
       </div>
       <div id="lobby-players" class="player-list"></div>
       <button id="btn-start-game" class="btn btn-primary hidden">Start Distilling!</button>

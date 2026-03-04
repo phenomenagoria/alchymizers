@@ -97,10 +97,11 @@ document.getElementById('btn-create').addEventListener('click', async () => {
 
   setupNetwork();
 
+  const code = generateRoomCode();
   try {
-    const peerId = await network.createRoom();
-    els.roomCode.textContent = generateRoomCode();
-    els.hostPeerId.textContent = peerId;
+    await network.createRoom(code);
+    els.roomCode.textContent = code;
+    els.hostPeerId.textContent = code;
 
     lobbyPlayers = [{ id: myPlayerId, name: myName, isHost: true }];
     renderLobby();
@@ -120,9 +121,9 @@ document.getElementById('btn-join-connect').addEventListener('click', async () =
   myName = getPlayerName();
   networkMode = 'client';
 
-  const hostId = els.joinHostId.value.trim();
-  if (!hostId) {
-    els.titleStatus.textContent = 'Please enter the host peer ID.';
+  const code = els.joinHostId.value.trim().toUpperCase();
+  if (!code) {
+    els.titleStatus.textContent = 'Please enter the room code.';
     return;
   }
 
@@ -130,13 +131,14 @@ document.getElementById('btn-join-connect').addEventListener('click', async () =
 
   try {
     els.titleStatus.textContent = 'Connecting...';
-    const welcome = await network.joinRoom(hostId, myName);
+    const welcome = await network.joinRoom(code, myName);
     myPlayerId = welcome.playerId;
 
     lobbyPlayers = [
       ...welcome.playerList,
       { id: myPlayerId, name: myName },
     ];
+    els.roomCode.textContent = code;
     renderLobby();
     showScreen('lobby');
   } catch (err) {
@@ -144,10 +146,10 @@ document.getElementById('btn-join-connect').addEventListener('click', async () =
   }
 });
 
-// Copy host ID
+// Copy room code
 document.getElementById('btn-copy-id').addEventListener('click', () => {
-  const id = els.hostPeerId.textContent;
-  navigator.clipboard?.writeText(id).then(() => {
+  const code = els.roomCode.textContent;
+  navigator.clipboard?.writeText(code).then(() => {
     els.lobbyStatus.textContent = 'Copied!';
     setTimeout(() => { els.lobbyStatus.textContent = ''; }, 2000);
   });
@@ -600,10 +602,10 @@ document.getElementById('btn-play-again').addEventListener('click', () => {
 // ===== Check URL for join link =====
 function checkJoinLink() {
   const hash = window.location.hash;
-  if (hash.includes('join?host=')) {
-    const hostId = hash.split('host=')[1];
-    if (hostId) {
-      els.joinHostId.value = hostId;
+  if (hash.includes('join?code=')) {
+    const code = hash.split('code=')[1];
+    if (code) {
+      els.joinHostId.value = code.toUpperCase();
       els.joinPanel.classList.remove('hidden');
     }
   }
