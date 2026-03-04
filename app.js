@@ -377,9 +377,15 @@ function updateActionButtons(player) {
 let currentPhaseShown = null;
 
 function handlePhaseUI() {
-  if (game.phase === PHASES.MARKET && currentPhaseShown !== 'MARKET') {
-    currentPhaseShown = 'MARKET';
-    showMarket();
+  if (game.phase === PHASES.MARKET) {
+    // Don't open market until blowout choice is resolved
+    const player = getPlayerState(game, myPlayerId);
+    const needsBlowoutChoice = player && player.blownOut && !player._blowoutChosen;
+
+    if (!needsBlowoutChoice && currentPhaseShown !== 'MARKET') {
+      currentPhaseShown = 'MARKET';
+      showMarket();
+    }
   } else if (game.phase !== PHASES.MARKET) {
     hideOverlay('market');
   }
@@ -427,9 +433,13 @@ document.getElementById('btn-choose-dollars').addEventListener('click', () => {
 
   if (networkMode === 'solo') {
     blowoutChoice(game, myPlayerId, 'dollars');
+    // Reset so handlePhaseUI can now open the market
+    currentPhaseShown = null;
     updateUI();
   } else {
     network.sendAction(myPlayerId, ACTIONS.BLOWOUT_CHOICE, { choice: 'dollars' });
+    currentPhaseShown = null;
+    updateUI();
   }
 });
 
@@ -439,9 +449,12 @@ document.getElementById('btn-choose-rep').addEventListener('click', () => {
 
   if (networkMode === 'solo') {
     blowoutChoice(game, myPlayerId, 'reputation');
+    currentPhaseShown = null;
     updateUI();
   } else {
     network.sendAction(myPlayerId, ACTIONS.BLOWOUT_CHOICE, { choice: 'reputation' });
+    currentPhaseShown = null;
+    updateUI();
   }
 });
 
