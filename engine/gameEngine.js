@@ -491,6 +491,31 @@ export function buyIngredient(game, playerId, color, value) {
   return true;
 }
 
+// Undo a purchase (remove from bag, refund dollars)
+export function unbuyIngredient(game, playerId, color) {
+  const player = game.players[playerId];
+  if (!player || game.phase !== PHASES.MARKET) return false;
+
+  const idx = player.boughtThisRound.indexOf(color);
+  if (idx === -1) return false;
+
+  // Find the chip in the bag and remove it
+  const bagIdx = player.bag.findIndex(c => c.color === color && player.boughtThisRound.includes(color));
+  if (bagIdx === -1) return false;
+
+  const chip = player.bag[bagIdx];
+  const discount = game.roundModifiers.discount || 0;
+  const cost = getIngredientCost(color, chip.value, discount);
+
+  player.bag.splice(bagIdx, 1);
+  player.boughtThisRound.splice(idx, 1);
+  player.dollars += cost;
+
+  const ingredient = INGREDIENTS[color];
+  game.log.push(`${player.name}: returned ${ingredient.name} (+$${cost}).`);
+  return true;
+}
+
 // Player finishes buying
 export function finishBuying(game, playerId) {
   const player = game.players[playerId];

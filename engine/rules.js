@@ -65,7 +65,7 @@ export const INGREDIENTS = {
   green: {
     name: 'Juniper',
     icon: '🌿',
-    description: 'If last or second-last chip is green, gain 1 copper.',
+    description: 'If last or second-last chip is Juniper, gain 1 copper.',
     values: [1, 2, 4],
     costs: { 1: 4, 2: 8, 4: 14 },
     buyable: true,
@@ -81,7 +81,7 @@ export const INGREDIENTS = {
   blue: {
     name: 'Copper Coil',
     icon: '🔵',
-    description: 'Draw 1 more chip. If white, return it; otherwise place it.',
+    description: 'Draw 1 more chip. If Bad Mash, return it; otherwise place it.',
     values: [1, 2, 4],
     costs: { 1: 5, 2: 10, 4: 19 },
     buyable: true,
@@ -89,7 +89,7 @@ export const INGREDIENTS = {
   yellow: {
     name: 'Sugar',
     icon: '🍬',
-    description: 'Move 1 extra space per yellow already placed.',
+    description: 'Move 1 extra space per Sugar already placed.',
     values: [1, 2, 4],
     costs: { 1: 8, 2: 12, 4: 18 },
     buyable: true,

@@ -1,6 +1,6 @@
 import {
   createGame, startGame as engineStartGame, drawChip, stopDrawing,
-  buyIngredient, finishBuying, spendCopper, blowoutChoice,
+  buyIngredient, unbuyIngredient, finishBuying, spendCopper, blowoutChoice,
   getLeaderboard, getWinner, getPlayerState, PHASES,
 } from './engine/gameEngine.js';
 import {
@@ -210,6 +210,9 @@ function handleNetworkAction(payload) {
     case ACTIONS.BUY:
       buyIngredient(game, payload.playerId, payload.data.color, payload.data.value);
       break;
+    case ACTIONS.UNBUY:
+      unbuyIngredient(game, payload.playerId, payload.data.color);
+      break;
     case ACTIONS.DONE_BUYING:
       finishBuying(game, payload.playerId);
       break;
@@ -242,10 +245,9 @@ function renderLobby() {
 }
 
 function generateRoomCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
-  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
-  code += '-' + Math.floor(1000 + Math.random() * 9000);
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
 }
 
@@ -501,12 +503,31 @@ function renderCart() {
   player.boughtThisRound.forEach(color => {
     const div = document.createElement('div');
     div.className = 'cart-chip';
-    div.innerHTML = `${INGREDIENTS[color].icon} ${INGREDIENTS[color].name}`;
+    div.innerHTML = `${INGREDIENTS[color].icon} ${INGREDIENTS[color].name} <span class="remove-btn">✕</span>`;
+    div.style.cursor = 'pointer';
+    div.addEventListener('click', () => {
+      doUnbuy(color);
+    });
     els.cartItems.appendChild(div);
   });
 
   if (player.boughtThisRound.length === 0) {
-    els.cartItems.innerHTML = '<span style="color: var(--text-dim);">Nothing yet...</span>';
+    els.cartItems.innerHTML = '<span style="color: var(--text-dim);">Nothing yet... tap items above to buy</span>';
+  }
+}
+
+function doUnbuy(color) {
+  if (networkMode === 'solo') {
+    unbuyIngredient(game, myPlayerId, color);
+    updateUI();
+    const player = getPlayerState(game, myPlayerId);
+    const discount = game.roundModifiers.discount || 0;
+    const maxBuys = game.roundModifiers.buyLimit || MAX_BUYS_PER_ROUND;
+    els.marketDollars.textContent = `$${player.dollars}`;
+    renderMarketItems(player, discount, maxBuys);
+    renderCart();
+  } else {
+    network.sendAction(myPlayerId, ACTIONS.UNBUY, { color });
   }
 }
 
