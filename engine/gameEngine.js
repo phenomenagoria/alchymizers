@@ -594,7 +594,7 @@ export function buyMulligan(game, playerId) {
   return true;
 }
 
-// Use Mulligan during brew — undo last draw, once per round
+// Use Mulligan during brew — undo last draw, reshuffle bag, once per round
 export function useMulligan(game, playerId) {
   const player = game.players[playerId];
   if (!player || game.phase !== PHASES.DISTILL) return null;
@@ -605,30 +605,18 @@ export function useMulligan(game, playerId) {
   player._mulliganUsed = true;
   player.hasMulligan = false;
 
-  // Remove the last chip from pot
+  // Remove the last chip from pot and put it back in the bag
   const undoneChip = player.pot.pop();
+  player.bag.push(undoneChip);
 
-  // Recalculate position from scratch
-  let position = player.flameStart;
+  // Reshuffle the bag (only the remaining undrawn chips + returned chip)
+  // Use a deterministic seed unique to this mulligan event
+  const mulliganSeed = deriveSeed(game.seed, hashString(playerId), game.round, 0x40071694);
+  const mRng = createRng(mulliganSeed);
+  mRng.shuffle(player.bag);
+
+  // Recalculate white total from remaining pot
   let whiteTotal = 0;
-  // We need to replay all remaining pot chips to get correct position
-  // This is simpler: just recalculate from pot
-  for (const chip of player.pot) {
-    let movement = chip.value;
-    // Note: we skip modifier recalculations for simplicity — the position
-    // was already calculated correctly when chips were placed, so we just
-    // need to subtract the undone chip's contribution
-    position += movement;
-  }
-
-  // Actually, it's easier to track movement per chip. Instead, let's just
-  // revert: put the chip back in bag, recalculate white total, and
-  // recompute position by subtracting approximate movement.
-  // The cleanest approach: store position before this draw.
-  // For now, we recalculate white total and approximate position.
-
-  // Recalculate white total
-  whiteTotal = 0;
   for (const chip of player.pot) {
     if (chip.color === 'white') {
       if (game.roundModifiers.white1Safe && chip.value === 1) continue;
@@ -637,18 +625,15 @@ export function useMulligan(game, playerId) {
   }
   player.whiteTotal = whiteTotal;
 
-  // Un-blow-out if we were at the edge
+  // Un-blow-out (mulligan can save you from a blowout)
   player.blownOut = false;
 
-  // Put chip back in bag
-  player.bag.push(undoneChip);
-
   // Recalculate position from scratch by replaying pot
-  position = player.flameStart;
+  let position = player.flameStart;
   for (let i = 0; i < player.pot.length; i++) {
     const chip = player.pot[i];
     let movement = chip.value;
-    const chipIdx = i + 1; // 1-based chip count for firstChipDouble
+    const chipIdx = i + 1;
 
     if (game.roundModifiers.firstChipDouble && chipIdx === 1) {
       movement *= 2;
@@ -659,11 +644,9 @@ export function useMulligan(game, playerId) {
     if (game.roundModifiers.cornBonus && chip.color === 'orange') {
       movement += game.roundModifiers.cornBonus;
     }
-    // Red: extra = orange chips placed before this one
     if (chip.color === 'red') {
       movement += player.pot.slice(0, i).filter(c => c.color === 'orange').length;
     }
-    // Yellow: extra = yellow chips placed before this one
     if (chip.color === 'yellow') {
       movement += player.pot.slice(0, i).filter(c => c.color === 'yellow').length;
     }
@@ -673,7 +656,7 @@ export function useMulligan(game, playerId) {
   player.position = Math.min(TRACK_MAX, position);
 
   const chipName = INGREDIENTS[undoneChip.color]?.name || undoneChip.color;
-  game.log.push(`${player.name}: used Mulligan — returned ${chipName} ${undoneChip.value} to stash.`);
+  game.log.push(`${player.name}: used Mulligan — returned ${chipName} ${undoneChip.value} to stash and reshuffled.`);
   return undoneChip;
 }
 
