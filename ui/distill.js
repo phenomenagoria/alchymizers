@@ -88,7 +88,7 @@ export function renderDistillProof(proofEl, position, flameStart) {
       <div class="distill-proof-fill" style="width: ${pct}%"></div>
     </div>
     <div class="distill-proof-text">
-      Position ${position} — 💵 $${space.coins} ⭐ ${space.vp}${specialText}
+      Position ${position} — 💵 $${space.coins} 🍶 ${space.vp}${specialText}
     </div>
     <div class="distill-proof-copper">
       ${copperOnSpot > 0 ? `🔶 +${copperOnSpot} copper if you bottle here!` : ''}${copperAhead > 0 ? ` ${copperOnSpot > 0 ? '·' : '🔶'} ${copperAhead} copper spot${copperAhead > 1 ? 's' : ''} ahead` : ''}

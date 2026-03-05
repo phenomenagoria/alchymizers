@@ -13,7 +13,9 @@ import { addChatMessage, addSystemMessage, updateGameLog } from './ui/chat.js';
 import { createNetworkManager } from './network/peer.js';
 import { ACTIONS } from './network/messages.js';
 import { drawPixelScene } from './ui/pixelScene.js';
+import { drawNightScene } from './ui/nightScene.js';
 import { animateChipDraw, updateStillLiquid, renderDistillProof, renderDistillChips } from './ui/distill.js';
+import { updateBrewmaster } from './ui/brewmaster.js';
 
 // ===== App State =====
 let game = null;
@@ -225,7 +227,7 @@ function handleNetworkAction(payload) {
       buyIngredient(game, payload.playerId, payload.data.color, payload.data.value);
       break;
     case ACTIONS.UNBUY:
-      unbuyIngredient(game, payload.playerId, payload.data.color);
+      unbuyIngredient(game, payload.playerId, payload.data.color, payload.data.value);
       break;
     case ACTIONS.DONE_BUYING:
       finishBuying(game, payload.playerId);
@@ -524,9 +526,11 @@ function updateDistillOverlay() {
 
   const threshold = BLOWOUT_THRESHOLD - (game.roundModifiers.thresholdReduction || 0);
 
-  // Round info
+  // Round info and stats
   document.getElementById('distill-round').textContent = `Round ${game.round}`;
   document.getElementById('distill-bag-count').textContent = `🎒 ${player.bag.length}`;
+  document.getElementById('distill-copper').textContent = `🔶 ${player.copper}`;
+  document.getElementById('distill-regulars').textContent = `🍶 ${player.reputation}`;
 
   // Pressure gauge
   renderPressure(
@@ -542,6 +546,9 @@ function updateDistillOverlay() {
 
   // Proof
   renderDistillProof(document.getElementById('distill-proof'), player.position, player.flameStart);
+
+  // Brewmaster
+  updateBrewmaster(document.getElementById('brewmaster'), player, threshold);
 
   // Button states
   const canAct = !player.stopped && !player.blownOut;
@@ -745,7 +752,7 @@ function refreshMarket() {
 
     const canBuy = player.dollars >= item.cost &&
                    player.boughtThisRound.length < maxBuys &&
-                   !player.boughtThisRound.includes(item.color);
+                   !player.boughtThisRound.includes(`${item.color}:${item.value}`);
 
     if (!canBuy) div.classList.add('disabled');
 
@@ -765,11 +772,13 @@ function refreshMarket() {
 
   // Render cart
   els.cartItems.innerHTML = '';
-  player.boughtThisRound.forEach(color => {
+  player.boughtThisRound.forEach(key => {
+    const [color, valStr] = key.split(':');
     const div = document.createElement('div');
     div.className = 'cart-chip';
     div.dataset.unbuyColor = color;
-    div.innerHTML = `${INGREDIENTS[color].icon} ${INGREDIENTS[color].name} <span class="remove-btn">✕</span>`;
+    div.dataset.unbuyValue = valStr;
+    div.innerHTML = `${INGREDIENTS[color].icon} ${INGREDIENTS[color].name} (${valStr}) <span class="remove-btn">✕</span>`;
     div.style.cursor = 'pointer';
     els.cartItems.appendChild(div);
   });
@@ -801,14 +810,15 @@ els.cartItems.addEventListener('click', (e) => {
   const chip = e.target.closest('.cart-chip');
   if (!chip) return;
   const color = chip.dataset.unbuyColor;
+  const value = Number(chip.dataset.unbuyValue);
   if (!color) return;
 
   if (networkMode === 'solo') {
-    unbuyIngredient(game, myPlayerId, color);
+    unbuyIngredient(game, myPlayerId, color, value);
     refreshMarket();
     updateUI();
   } else {
-    network.sendAction(myPlayerId, ACTIONS.UNBUY, { color });
+    network.sendAction(myPlayerId, ACTIONS.UNBUY, { color, value });
   }
 });
 
@@ -839,7 +849,7 @@ function showEndgame() {
     els.endgameWinner.innerHTML = `
       <div class="winner-name">🏆 ${escapeHtml(winner.name)}</div>
       <div class="winner-score">
-        ${winner.reputation} Reputation | $${winner.dollars} | ${winner.copper} Copper
+        ${winner.reputation} Regulars | $${winner.dollars} | ${winner.copper} Copper
       </div>
     `;
   }
@@ -851,7 +861,7 @@ function showEndgame() {
     div.innerHTML = `
       <span class="eg-rank">#${idx + 1}</span>
       <span class="eg-name">${escapeHtml(entry.name)}</span>
-      <span class="eg-rep">★ ${entry.reputation}</span>
+      <span class="eg-rep">🍶 ${entry.reputation}</span>
     `;
     els.endgameScores.appendChild(div);
   });
@@ -896,6 +906,10 @@ checkJoinLink();
 // Draw pixel art scene on title screen
 const pixelCanvas = document.getElementById('pixel-canvas');
 if (pixelCanvas) drawPixelScene(pixelCanvas);
+
+// Draw night scene background
+const nightBg = document.getElementById('night-bg');
+if (nightBg) drawNightScene(nightBg);
 
 // Generate a random default name
 const defaultNames = ['Granny Mae', 'Whiskey Jack', 'Copper Tom', 'Bootleg Billy', 'Sweet Sally', 'Moonshine Mike'];

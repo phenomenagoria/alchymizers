@@ -470,8 +470,9 @@ export function buyIngredient(game, playerId, color, value) {
   const maxBuys = game.roundModifiers.buyLimit || MAX_BUYS_PER_ROUND;
   if (player.boughtThisRound.length >= maxBuys) return false;
 
-  // Must be different colors
-  if (player.boughtThisRound.includes(color)) return false;
+  // Must be different items (same ingredient type with different value is OK)
+  const key = `${color}:${value}`;
+  if (player.boughtThisRound.includes(key)) return false;
 
   const ingredient = INGREDIENTS[color];
   if (!ingredient || !ingredient.buyable) return false;
@@ -483,34 +484,34 @@ export function buyIngredient(game, playerId, color, value) {
 
   player.dollars -= cost;
   player.bag.push({ color, value });
-  player.boughtThisRound.push(color);
+  player.boughtThisRound.push(key);
 
   game.log.push(`${player.name}: bought ${ingredient.name} (${value}) for $${cost}.`);
   return true;
 }
 
 // Undo a purchase (remove from bag, refund dollars)
-export function unbuyIngredient(game, playerId, color) {
+export function unbuyIngredient(game, playerId, color, value) {
   const player = game.players[playerId];
   if (!player || game.phase !== PHASES.MARKET) return false;
 
-  const idx = player.boughtThisRound.indexOf(color);
+  const key = `${color}:${value}`;
+  const idx = player.boughtThisRound.indexOf(key);
   if (idx === -1) return false;
 
   // Find the chip in the bag and remove it
-  const bagIdx = player.bag.findIndex(c => c.color === color && player.boughtThisRound.includes(color));
+  const bagIdx = player.bag.findIndex(c => c.color === color && c.value === value);
   if (bagIdx === -1) return false;
 
-  const chip = player.bag[bagIdx];
   const discount = game.roundModifiers.discount || 0;
-  const cost = getIngredientCost(color, chip.value, discount);
+  const cost = getIngredientCost(color, value, discount);
 
   player.bag.splice(bagIdx, 1);
   player.boughtThisRound.splice(idx, 1);
   player.dollars += cost;
 
   const ingredient = INGREDIENTS[color];
-  game.log.push(`${player.name}: returned ${ingredient.name} (+$${cost}).`);
+  game.log.push(`${player.name}: returned ${ingredient.name} (${value}) (+$${cost}).`);
   return true;
 }
 

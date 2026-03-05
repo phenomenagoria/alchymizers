@@ -87,7 +87,7 @@ export function renderProofGauge(player) {
 
   rewardsEl.innerHTML = `
     <span class="reward-dollars">💵 $${space.coins}</span>
-    <span class="reward-rep">⭐ ${space.vp}</span>
+    <span class="reward-rep">🍶 ${space.vp}</span>
     ${specialText ? `<span style="color: var(--copper-light)">${specialText}</span>` : ''}
     <span class="reward-copper-count">${copperOnSpot > 0 ? `🔶 +${copperOnSpot} copper!` : ''}${copperAhead > 0 ? ` ${copperOnSpot > 0 ? '·' : '🔶'} ${copperAhead} ahead` : ''}</span>
   `;

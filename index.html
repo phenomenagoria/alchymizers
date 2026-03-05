@@ -8,6 +8,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <!-- Night scene background (swap this canvas for your own image later) -->
+  <canvas id="night-bg" width="320" height="180"></canvas>
+
   <!-- ===== TITLE SCREEN ===== -->
   <div id="screen-title" class="screen active">
     <div class="title-container">
@@ -16,7 +19,7 @@
       </div>
       <h1 class="game-title">Alchymizers</h1>
       <p class="game-subtitle">Backcountry Moonshine Distillers</p>
-      <p class="game-version">v0.4.0</p>
+      <p class="game-version">v0.5.0</p>
 
       <div class="title-buttons">
         <button id="btn-solo" class="btn btn-primary">Play Solo</button>
@@ -83,7 +86,7 @@
             <span id="stat-dollars" class="stat-value">$0</span>
           </div>
           <div class="stat">
-            <span class="stat-icon">⭐</span>
+            <span class="stat-icon">🍶</span>
             <span id="stat-rep" class="stat-value">0</span>
           </div>
           <div class="stat">
@@ -206,7 +209,11 @@
       <!-- Round info -->
       <div class="distill-topbar">
         <span id="distill-round">Round 1</span>
-        <span id="distill-bag-count" class="distill-bag-count">🎒 9</span>
+        <div class="distill-topbar-stats">
+          <span id="distill-copper" class="distill-stat">🔶 0</span>
+          <span id="distill-regulars" class="distill-stat">🍶 0</span>
+          <span id="distill-bag-count" class="distill-bag-count">🎒 9</span>
+        </div>
       </div>
 
       <!-- Pressure Gauge (huge, prominent) -->
@@ -231,6 +238,9 @@
 
       <!-- Chip Reveal Area -->
       <div class="distill-chip-reveal" id="distill-chip-reveal"></div>
+
+      <!-- Brewmaster -->
+      <div id="brewmaster" class="brewmaster"></div>
 
       <!-- Proof Track Mini -->
       <div class="distill-proof" id="distill-proof">
@@ -272,7 +282,7 @@
         </button>
         <button id="btn-choose-rep" class="blowout-option blowout-option-rep">
           <span class="blowout-option-icon">⭐</span>
-          <span class="blowout-option-label">Keep Reputation</span>
+          <span class="blowout-option-label">Keep Regulars</span>
           <span class="blowout-option-value" id="blowout-rep-value">0</span>
           <span class="blowout-option-note">Skip market this round</span>
         </button>
@@ -289,7 +299,7 @@
       </div>
       <div class="howto-body">
         <h3>Goal</h3>
-        <p>Earn the most <strong>Reputation</strong> over 9 rounds of moonshine distilling. The distiller with the highest reputation wins!</p>
+        <p>Earn the most <strong>Regulars</strong> (loyal customers) over 9 rounds of moonshine distilling. The distiller with the most regulars wins!</p>
 
         <h3>Round Flow</h3>
         <ol>
@@ -315,7 +325,7 @@
         <p>Spend 2 copper at the market on either: <strong>Upgrade Still</strong> (advance your flame start by 1 — begin each round further along the track) or <strong>Rabbit's Foot (Mulligan)</strong> (undo your last draw once during the next brew phase).</p>
 
         <h3>Winning</h3>
-        <p>After 9 rounds, the player with the most reputation wins. Ties broken by track position.</p>
+        <p>After 9 rounds, the player with the most regulars wins. Ties broken by track position.</p>
       </div>
     </div>
   </div>

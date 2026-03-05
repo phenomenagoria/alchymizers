@@ -22,7 +22,7 @@ export function renderLeaderboard(container, entries, selfId) {
     const stats = document.createElement('span');
     stats.className = 'lb-stats';
     stats.innerHTML = `
-      <span class="lb-rep">★${entry.reputation}</span>
+      <span class="lb-rep">🍶${entry.reputation}</span>
       <span class="lb-dollars">$${entry.dollars}</span>
       <span>P${entry.position}</span>
     `;
