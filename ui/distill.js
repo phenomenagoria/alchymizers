@@ -59,25 +59,23 @@ export function renderDistillProof(proofEl, position, flameStart) {
   const space = TRACK[position] || TRACK[0];
   const pct = (position / TRACK_MAX) * 100;
 
-  // Count copper in range
-  let copperEarned = 0;
+  // Count copper spots ahead
   let copperAhead = 0;
-  for (let i = 0; i <= TRACK_MAX; i++) {
-    if (TRACK[i] && TRACK[i].special === 'copper') {
-      if (i >= (flameStart || 0) && i <= position) copperEarned++;
-      else if (i > position) copperAhead++;
-    }
+  for (let i = position + 1; i <= TRACK_MAX; i++) {
+    if (TRACK[i] && TRACK[i].special === 'copper') copperAhead++;
   }
+  const copperOnSpot = space.special === 'copper' ? (space.copperValue || 1) : 0;
 
-  // Build copper marker dots
+  // Build copper marker dots — larger for 2-copper spots
   let markerDots = '';
   for (const s of TRACK) {
     if (!s.special) continue;
     const leftPct = (s.pos / TRACK_MAX) * 100;
     const isBehind = s.pos < (flameStart || 0);
     const cls = s.special === 'copper' ? 'marker-copper' : 'marker-flame';
+    const big = (s.copperValue && s.copperValue >= 2) ? ' marker-big' : '';
     const behind = isBehind ? ' marker-behind' : '';
-    markerDots += `<div class="proof-track-marker ${cls}${behind}" style="left:${leftPct}%"></div>`;
+    markerDots += `<div class="proof-track-marker ${cls}${big}${behind}" style="left:${leftPct}%" title="Pos ${s.pos}: +${s.copperValue || 1}🔶"></div>`;
   }
 
   let specialText = '';
@@ -93,7 +91,7 @@ export function renderDistillProof(proofEl, position, flameStart) {
       Position ${position} — 💵 $${space.coins} ⭐ ${space.vp}${specialText}
     </div>
     <div class="distill-proof-copper">
-      🔶 ${copperEarned} copper earned${copperAhead > 0 ? ` · ${copperAhead} ahead` : ''}
+      ${copperOnSpot > 0 ? `🔶 +${copperOnSpot} copper if you bottle here!` : ''}${copperAhead > 0 ? ` ${copperOnSpot > 0 ? '·' : '🔶'} ${copperAhead} copper spot${copperAhead > 1 ? 's' : ''} ahead` : ''}
     </div>
   `;
 }

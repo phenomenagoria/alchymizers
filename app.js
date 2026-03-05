@@ -1,7 +1,7 @@
 import {
   createGame, startGame as engineStartGame, drawChip, stopDrawing,
-  buyIngredient, unbuyIngredient, finishBuying, spendCopper, blowoutChoice,
-  scoreRound, getLeaderboard, getWinner, getPlayerState, PHASES,
+  buyIngredient, unbuyIngredient, finishBuying, buyMulligan, useMulligan,
+  blowoutChoice, scoreRound, getLeaderboard, getWinner, getPlayerState, PHASES,
 } from './engine/gameEngine.js';
 import {
   TRACK, TRACK_MAX, BLOWOUT_THRESHOLD, INGREDIENTS, TOTAL_ROUNDS,
@@ -53,7 +53,7 @@ const els = {
   actionButtons: document.getElementById('action-buttons'),
   blowoutDollarsValue: document.getElementById('blowout-dollars-value'),
   blowoutRepValue: document.getElementById('blowout-rep-value'),
-  copperSpend: document.getElementById('copper-spend'),
+  mulliganBuy: document.getElementById('mulligan-buy'),
   leaderboard: document.getElementById('leaderboard'),
   chatMessages: document.getElementById('chat-messages'),
   chatInput: document.getElementById('chat-input'),
@@ -232,8 +232,11 @@ function handleNetworkAction(payload) {
     case ACTIONS.BLOWOUT_CHOICE:
       blowoutChoice(game, payload.playerId, payload.data.choice);
       break;
-    case ACTIONS.SPEND_COPPER:
-      spendCopper(game, payload.playerId);
+    case ACTIONS.BUY_MULLIGAN:
+      buyMulligan(game, payload.playerId);
+      break;
+    case ACTIONS.USE_MULLIGAN:
+      useMulligan(game, payload.playerId);
       break;
   }
 
@@ -403,9 +406,9 @@ function updateActionButtons(player) {
     els.actionButtons.classList.add('hidden');
   }
 
-  // Copper spend (show during market phase only)
-  const showCopper = player.copper >= 2 && game.phase === PHASES.MARKET;
-  els.copperSpend.classList.toggle('hidden', !showCopper);
+  // Mulligan buy (show in market if player has 2+ copper and no mulligan yet)
+  const showMulligan = player.copper >= 2 && !player.hasMulligan && game.phase === PHASES.MARKET;
+  els.mulliganBuy.classList.toggle('hidden', !showMulligan);
 }
 
 let currentPhaseShown = null;
@@ -541,6 +544,11 @@ function updateDistillOverlay() {
   document.getElementById('btn-distill-draw').disabled = !canAct || player.bag.length === 0;
   document.getElementById('btn-distill-stop').disabled = !canAct;
 
+  // Mulligan button
+  const mulliganEl = document.getElementById('distill-mulligan');
+  const canMulligan = player.hasMulligan && !player._mulliganUsed && player.pot.length > 0 && !player.stopped && !player.blownOut;
+  mulliganEl.classList.toggle('hidden', !canMulligan);
+
   // Waiting message
   const waiting = document.getElementById('distill-waiting');
   if (player.stopped || player.blownOut) {
@@ -553,6 +561,19 @@ function updateDistillOverlay() {
     document.getElementById('btn-distill-stop').classList.remove('hidden');
   }
 }
+
+// Use Mulligan button
+document.getElementById('btn-use-mulligan').addEventListener('click', () => {
+  if (!game || game.phase !== PHASES.DISTILL || distillAnimating) return;
+  const player = getPlayerState(game, myPlayerId);
+  if (!player || !player.hasMulligan || player._mulliganUsed) return;
+  if (player.pot.length === 0 || player.stopped || player.blownOut) return;
+
+  useMulligan(game, myPlayerId);
+  document.getElementById('distill-chip-reveal').innerHTML = '';
+  updateUI();
+  updateDistillOverlay();
+});
 
 // Distill overlay Brew button
 document.getElementById('btn-distill-draw').addEventListener('click', () => {
@@ -641,13 +662,14 @@ document.getElementById('btn-choose-rep').addEventListener('click', () => {
   }
 });
 
-// Spend copper
-document.getElementById('btn-spend-copper').addEventListener('click', () => {
+// Buy Mulligan at market
+document.getElementById('btn-buy-mulligan').addEventListener('click', () => {
   if (networkMode === 'solo') {
-    spendCopper(game, myPlayerId);
+    buyMulligan(game, myPlayerId);
+    refreshMarket();
     updateUI();
   } else {
-    network.sendAction(myPlayerId, ACTIONS.SPEND_COPPER);
+    network.sendAction(myPlayerId, ACTIONS.BUY_MULLIGAN);
   }
 });
 
@@ -689,9 +711,9 @@ function refreshMarket() {
 
   els.marketDollars.textContent = `$${player.dollars}`;
 
-  // Copper spend (inside market overlay)
-  const showCopper = player.copper >= 2;
-  els.copperSpend.classList.toggle('hidden', !showCopper);
+  // Mulligan buy (inside market overlay)
+  const showMulligan = player.copper >= 2 && !player.hasMulligan;
+  els.mulliganBuy.classList.toggle('hidden', !showMulligan);
 
   // Render shop items with data attributes for event delegation
   const items = getShopItems(discount);

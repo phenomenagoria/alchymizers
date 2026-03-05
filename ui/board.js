@@ -74,9 +74,10 @@ export function renderProofGauge(player) {
   // Render copper/flame markers on the proof bar
   renderTrackMarkers(document.getElementById('proof-bar-markers'), flame);
 
-  // Count copper earned this round (flame to current pos)
-  const copperEarned = countCopperInRange(flame, pos);
+  // Count copper: only landing spot matters now, but show what's ahead
   const copperAhead = countCopperInRange(pos + 1, TRACK_MAX);
+  const landedSpace = TRACK[pos] || TRACK[0];
+  const copperOnSpot = landedSpace.special === 'copper' ? (landedSpace.copperValue || 1) : 0;
 
   // Show rewards at current position
   const space = TRACK[pos] || TRACK[0];
@@ -88,7 +89,7 @@ export function renderProofGauge(player) {
     <span class="reward-dollars">💵 $${space.coins}</span>
     <span class="reward-rep">⭐ ${space.vp}</span>
     ${specialText ? `<span style="color: var(--copper-light)">${specialText}</span>` : ''}
-    <span class="reward-copper-count">🔶 ${copperEarned} earned${copperAhead > 0 ? ` · ${copperAhead} ahead` : ''}</span>
+    <span class="reward-copper-count">${copperOnSpot > 0 ? `🔶 +${copperOnSpot} copper!` : ''}${copperAhead > 0 ? ` ${copperOnSpot > 0 ? '·' : '🔶'} ${copperAhead} ahead` : ''}</span>
   `;
 }
 
@@ -103,7 +104,8 @@ export function renderTrackMarkers(container, flameStart) {
     dot.className = 'proof-track-marker';
     if (space.special === 'copper') {
       dot.classList.add('marker-copper');
-      dot.title = `Pos ${space.pos}: 🔶 copper`;
+      if (space.copperValue >= 2) dot.classList.add('marker-big');
+      dot.title = `Pos ${space.pos}: 🔶 +${space.copperValue || 1} copper (bottle here)`;
     } else if (space.special === 'flame') {
       dot.classList.add('marker-flame');
       dot.title = `Pos ${space.pos}: 🔥 flame`;
@@ -115,7 +117,7 @@ export function renderTrackMarkers(container, flameStart) {
   }
 }
 
-// Count copper spaces in a range [from, to] inclusive
+// Count copper spots in a range [from, to] inclusive
 export function countCopperInRange(from, to) {
   let count = 0;
   for (let i = Math.max(0, from); i <= Math.min(TRACK_MAX, to); i++) {

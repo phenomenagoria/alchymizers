@@ -178,8 +178,9 @@
         <h3>Bought:</h3>
         <div id="cart-items"></div>
       </div>
-      <div id="copper-spend" class="copper-spend hidden">
-        <button id="btn-spend-copper" class="btn btn-small">🔥 Upgrade Still (2 copper → +1 start)</button>
+      <div id="mulligan-buy" class="mulligan-buy hidden">
+        <button id="btn-buy-mulligan" class="btn btn-mulligan-buy">🐇 Buy Rabbit's Foot — Mulligan (2 🔶)</button>
+        <p class="mulligan-desc">Undo your last draw next brew phase (once per round)</p>
       </div>
       <button id="btn-done-buying" class="btn btn-primary btn-done-buying">Done Shopping</button>
     </div>
@@ -233,6 +234,11 @@
           <div class="distill-proof-fill" style="width: 0%"></div>
         </div>
         <div class="distill-proof-text">Position 0 — 💵 $0 ⭐ 0</div>
+      </div>
+
+      <!-- Mulligan button -->
+      <div id="distill-mulligan" class="distill-mulligan hidden">
+        <button id="btn-use-mulligan" class="btn btn-mulligan">🐇 Mulligan — Undo Last Draw</button>
       </div>
 
       <!-- Action Buttons -->
@@ -301,7 +307,8 @@
         </ul>
 
         <h3>Copper</h3>
-        <p>Earn copper by landing on prime-numbered spaces on the track. Spend 2 copper during the market phase to advance your flame start position by 1 — you'll begin each round further along the track!</p>
+        <p>Earn copper by <strong>bottling on</strong> a prime-numbered space (marked with 🔶 on the proof bar). Low primes (2–13) give 1 copper, high primes (17–31) give 2 copper. You must stop on the spot — passing through doesn't count!</p>
+        <p>Spend 2 copper at the market to buy a <strong>Rabbit's Foot (Mulligan)</strong> — this lets you undo your last draw once during the next brew phase.</p>
 
         <h3>Winning</h3>
         <p>After 9 rounds, the player with the most reputation wins. Ties broken by track position.</p>

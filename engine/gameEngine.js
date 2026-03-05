@@ -1,6 +1,6 @@
 import { createRng, deriveSeed } from './rng.js';
 import {
-  TOTAL_ROUNDS, BLOWOUT_THRESHOLD, MAX_BUYS_PER_ROUND, COPPER_PER_FLAME,
+  TOTAL_ROUNDS, BLOWOUT_THRESHOLD, MAX_BUYS_PER_ROUND,
   TRACK, TRACK_MAX, INGREDIENTS, HOLLER_CARDS,
   createStartingBag, getIngredientCost,
 } from './rules.js';
@@ -33,6 +33,7 @@ function createPlayer(id, name) {
     copper: 0,
     boughtThisRound: [], // colors bought this round
     chipCount: 0,        // number of chips drawn this round (for first-chip-double)
+    hasMulligan: false,  // bought a Rabbit's Foot at market
   };
 }
 
@@ -414,17 +415,13 @@ export function scoreRound(game) {
       game.log.push(`${player.name}: scored $${earnedDollars} and ${earnedRep} rep.`);
     }
 
-    // Special space bonuses (only if not blown out)
+    // Copper bonus: only if bottled ON a copper space (not blown out)
     if (!player.blownOut) {
-      // Check all spaces from flame start to current position for specials
-      for (let i = player.flameStart; i <= player.position; i++) {
-        const space = TRACK[i];
-        if (space && space.special === 'copper') {
-          player.copper += 1;
-        }
-        if (space && space.special === 'flame') {
-          // Flame spaces noted but advancement handled during cleanup
-        }
+      const landedSpace = TRACK[player.position];
+      if (landedSpace && landedSpace.special === 'copper') {
+        const copperGain = landedSpace.copperValue || 1;
+        player.copper += copperGain;
+        game.log.push(`${player.name}: bottled on copper spot — gained ${copperGain} copper.`);
       }
     }
 
@@ -559,6 +556,7 @@ function cleanupRound(game) {
     player._blowoutEarnedRep = 0;
     player._skipMarket = false;
     player._distillSent = false;
+    player._mulliganUsed = false;
   }
 
   // Next round
@@ -572,15 +570,100 @@ function cleanupRound(game) {
   }
 }
 
-// Spend copper to advance flame
-export function spendCopper(game, playerId) {
+// Buy Mulligan (Rabbit's Foot) at market — costs 2 copper, grants undo ability
+export function buyMulligan(game, playerId) {
   const player = game.players[playerId];
-  if (!player || player.copper < COPPER_PER_FLAME) return false;
+  if (!player || game.phase !== PHASES.MARKET) return false;
+  if (player.copper < 2) return false;
+  if (player.hasMulligan) return false; // already has one
 
-  player.copper -= COPPER_PER_FLAME;
-  player.flameStart = Math.min(TRACK_MAX, player.flameStart + 1);
-  game.log.push(`${player.name}: upgraded still — flame now at ${player.flameStart}.`);
+  player.copper -= 2;
+  player.hasMulligan = true;
+  game.log.push(`${player.name}: bought a Rabbit's Foot (Mulligan) for 2 copper.`);
   return true;
+}
+
+// Use Mulligan during brew — undo last draw, once per round
+export function useMulligan(game, playerId) {
+  const player = game.players[playerId];
+  if (!player || game.phase !== PHASES.DISTILL) return null;
+  if (!player.hasMulligan || player._mulliganUsed) return null;
+  if (player.pot.length === 0) return null;
+  if (player.stopped || player.blownOut) return null;
+
+  player._mulliganUsed = true;
+  player.hasMulligan = false;
+
+  // Remove the last chip from pot
+  const undoneChip = player.pot.pop();
+
+  // Recalculate position from scratch
+  let position = player.flameStart;
+  let whiteTotal = 0;
+  // We need to replay all remaining pot chips to get correct position
+  // This is simpler: just recalculate from pot
+  for (const chip of player.pot) {
+    let movement = chip.value;
+    // Note: we skip modifier recalculations for simplicity — the position
+    // was already calculated correctly when chips were placed, so we just
+    // need to subtract the undone chip's contribution
+    position += movement;
+  }
+
+  // Actually, it's easier to track movement per chip. Instead, let's just
+  // revert: put the chip back in bag, recalculate white total, and
+  // recompute position by subtracting approximate movement.
+  // The cleanest approach: store position before this draw.
+  // For now, we recalculate white total and approximate position.
+
+  // Recalculate white total
+  whiteTotal = 0;
+  for (const chip of player.pot) {
+    if (chip.color === 'white') {
+      if (game.roundModifiers.white1Safe && chip.value === 1) continue;
+      whiteTotal += chip.value;
+    }
+  }
+  player.whiteTotal = whiteTotal;
+
+  // Un-blow-out if we were at the edge
+  player.blownOut = false;
+
+  // Put chip back in bag
+  player.bag.push(undoneChip);
+
+  // Recalculate position from scratch by replaying pot
+  position = player.flameStart;
+  for (let i = 0; i < player.pot.length; i++) {
+    const chip = player.pot[i];
+    let movement = chip.value;
+    const chipIdx = i + 1; // 1-based chip count for firstChipDouble
+
+    if (game.roundModifiers.firstChipDouble && chipIdx === 1) {
+      movement *= 2;
+    }
+    if (game.roundModifiers.bonusMovement && chip.color !== 'white') {
+      movement += game.roundModifiers.bonusMovement;
+    }
+    if (game.roundModifiers.cornBonus && chip.color === 'orange') {
+      movement += game.roundModifiers.cornBonus;
+    }
+    // Red: extra = orange chips placed before this one
+    if (chip.color === 'red') {
+      movement += player.pot.slice(0, i).filter(c => c.color === 'orange').length;
+    }
+    // Yellow: extra = yellow chips placed before this one
+    if (chip.color === 'yellow') {
+      movement += player.pot.slice(0, i).filter(c => c.color === 'yellow').length;
+    }
+
+    position += movement;
+  }
+  player.position = Math.min(TRACK_MAX, position);
+
+  const chipName = INGREDIENTS[undoneChip.color]?.name || undoneChip.color;
+  game.log.push(`${player.name}: used Mulligan — returned ${chipName} ${undoneChip.value} to stash.`);
+  return undoneChip;
 }
 
 // ---- Blowout Choice ----
