@@ -534,7 +534,7 @@ function updateDistillOverlay() {
   updateStillLiquid(document.getElementById('distill-liquid'), player.pot.length, 12);
 
   // Proof
-  renderDistillProof(document.getElementById('distill-proof'), player.position);
+  renderDistillProof(document.getElementById('distill-proof'), player.position, player.flameStart);
 
   // Button states
   const canAct = !player.stopped && !player.blownOut;

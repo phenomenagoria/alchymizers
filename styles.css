@@ -340,15 +340,37 @@ input[type="text"]:focus { outline: none; border-color: var(--copper-light); }
   box-shadow: 0 0 8px rgba(244,197,66,0.6);
 }
 
+.proof-bar-markers {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 1; pointer-events: none;
+}
+.proof-track-marker {
+  position: absolute; top: 50%; width: 6px; height: 6px;
+  border-radius: 50%; transform: translateY(-50%);
+  pointer-events: auto;
+}
+.proof-track-marker.marker-copper {
+  background: var(--copper-light);
+  box-shadow: 0 0 4px rgba(212,148,74,0.6);
+}
+.proof-track-marker.marker-flame {
+  background: #ff6b35;
+  box-shadow: 0 0 4px rgba(255,107,53,0.6);
+}
+.proof-track-marker.marker-behind {
+  opacity: 0.25;
+}
+
 .proof-rewards {
-  display: flex; justify-content: center; gap: 1.5rem;
-  margin-top: 0.4rem;
+  display: flex; justify-content: center; gap: 1rem;
+  margin-top: 0.4rem; flex-wrap: wrap;
 }
 .proof-rewards span {
   font-size: 1.2rem; font-weight: bold;
 }
 .reward-dollars { color: var(--corn-yellow); }
 .reward-rep { color: #88c8ff; }
+.reward-copper-count { font-size: 0.8rem !important; color: var(--copper-light); }
 
 /* ===== IN THE STILL (placed chips) ===== */
 .still-section {
@@ -733,7 +755,8 @@ input[type="text"]:focus { outline: none; border-color: var(--copper-light); }
   background: var(--wood-dark);
   border: 1px solid var(--copper-dark);
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
 }
 .distill-proof-fill {
   height: 100%;
@@ -744,6 +767,10 @@ input[type="text"]:focus { outline: none; border-color: var(--copper-light); }
 .distill-proof-text {
   font-size: 0.8rem; color: var(--text-dim);
   text-align: center; margin-top: 0.2rem;
+}
+.distill-proof-copper {
+  font-size: 0.8rem; color: var(--copper-light);
+  text-align: center; margin-top: 0.1rem;
 }
 
 /* Distill Action Buttons */

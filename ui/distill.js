@@ -55,15 +55,45 @@ export function updateStillLiquid(liquidEl, chipCount, maxVisible) {
 }
 
 // Render the mini proof display for the distill overlay
-export function renderDistillProof(proofEl, position) {
+export function renderDistillProof(proofEl, position, flameStart) {
   const space = TRACK[position] || TRACK[0];
   const pct = (position / TRACK_MAX) * 100;
+
+  // Count copper in range
+  let copperEarned = 0;
+  let copperAhead = 0;
+  for (let i = 0; i <= TRACK_MAX; i++) {
+    if (TRACK[i] && TRACK[i].special === 'copper') {
+      if (i >= (flameStart || 0) && i <= position) copperEarned++;
+      else if (i > position) copperAhead++;
+    }
+  }
+
+  // Build copper marker dots
+  let markerDots = '';
+  for (const s of TRACK) {
+    if (!s.special) continue;
+    const leftPct = (s.pos / TRACK_MAX) * 100;
+    const isBehind = s.pos < (flameStart || 0);
+    const cls = s.special === 'copper' ? 'marker-copper' : 'marker-flame';
+    const behind = isBehind ? ' marker-behind' : '';
+    markerDots += `<div class="proof-track-marker ${cls}${behind}" style="left:${leftPct}%"></div>`;
+  }
+
+  let specialText = '';
+  if (space.special === 'copper') specialText = ' 🔶+1';
+  else if (space.special === 'flame') specialText = ' 🔥+1';
+
   proofEl.innerHTML = `
     <div class="distill-proof-bar">
+      <div class="proof-bar-markers">${markerDots}</div>
       <div class="distill-proof-fill" style="width: ${pct}%"></div>
     </div>
     <div class="distill-proof-text">
-      Position ${position} — 💵 $${space.coins} ⭐ ${space.vp}
+      Position ${position} — 💵 $${space.coins} ⭐ ${space.vp}${specialText}
+    </div>
+    <div class="distill-proof-copper">
+      🔶 ${copperEarned} copper earned${copperAhead > 0 ? ` · ${copperAhead} ahead` : ''}
     </div>
   `;
 }

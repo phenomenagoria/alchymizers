@@ -71,6 +71,13 @@ export function renderProofGauge(player) {
   flameEl.style.left = `${flamePct}%`;
   posEl.textContent = `Position ${pos} / ${TRACK_MAX}`;
 
+  // Render copper/flame markers on the proof bar
+  renderTrackMarkers(document.getElementById('proof-bar-markers'), flame);
+
+  // Count copper earned this round (flame to current pos)
+  const copperEarned = countCopperInRange(flame, pos);
+  const copperAhead = countCopperInRange(pos + 1, TRACK_MAX);
+
   // Show rewards at current position
   const space = TRACK[pos] || TRACK[0];
   let specialText = '';
@@ -81,7 +88,40 @@ export function renderProofGauge(player) {
     <span class="reward-dollars">💵 $${space.coins}</span>
     <span class="reward-rep">⭐ ${space.vp}</span>
     ${specialText ? `<span style="color: var(--copper-light)">${specialText}</span>` : ''}
+    <span class="reward-copper-count">🔶 ${copperEarned} earned${copperAhead > 0 ? ` · ${copperAhead} ahead` : ''}</span>
   `;
+}
+
+// Render small markers on a proof bar for copper/flame positions
+export function renderTrackMarkers(container, flameStart) {
+  if (!container) return;
+  container.innerHTML = '';
+  for (const space of TRACK) {
+    if (!space.special) continue;
+    const leftPct = (space.pos / TRACK_MAX) * 100;
+    const dot = document.createElement('div');
+    dot.className = 'proof-track-marker';
+    if (space.special === 'copper') {
+      dot.classList.add('marker-copper');
+      dot.title = `Pos ${space.pos}: 🔶 copper`;
+    } else if (space.special === 'flame') {
+      dot.classList.add('marker-flame');
+      dot.title = `Pos ${space.pos}: 🔥 flame`;
+    }
+    // Dim markers behind flame start
+    if (space.pos < flameStart) dot.classList.add('marker-behind');
+    dot.style.left = `${leftPct}%`;
+    container.appendChild(dot);
+  }
+}
+
+// Count copper spaces in a range [from, to] inclusive
+export function countCopperInRange(from, to) {
+  let count = 0;
+  for (let i = Math.max(0, from); i <= Math.min(TRACK_MAX, to); i++) {
+    if (TRACK[i] && TRACK[i].special === 'copper') count++;
+  }
+  return count;
 }
 
 // Render placed chips in the still
