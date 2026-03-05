@@ -5,7 +5,7 @@ import {
 } from './engine/gameEngine.js';
 import {
   TRACK, TRACK_MAX, BLOWOUT_THRESHOLD, INGREDIENTS, TOTAL_ROUNDS,
-  getShopItems, MAX_BUYS_PER_ROUND,
+  getShopItems, MAX_BUYS_PER_ROUND, ingredientIconHtml,
 } from './engine/rules.js';
 import { renderPressure, renderProofGauge, renderPlacedChips, updatePlayerStats, showHollerCard, updateRoundPhase } from './ui/board.js';
 import { renderLeaderboard } from './ui/leaderboard.js';
@@ -760,7 +760,7 @@ function refreshMarket() {
     div.dataset.value = item.value;
 
     div.innerHTML = `
-      <div class="mi-icon">${item.icon}</div>
+      <div class="mi-icon">${ingredientIconHtml(item.color)}</div>
       <div class="mi-name">${item.name}</div>
       <div class="mi-value">Value: ${item.value}</div>
       <div class="mi-cost">$${item.cost}</div>
@@ -778,7 +778,7 @@ function refreshMarket() {
     div.className = 'cart-chip';
     div.dataset.unbuyColor = color;
     div.dataset.unbuyValue = valStr;
-    div.innerHTML = `${INGREDIENTS[color].icon} ${INGREDIENTS[color].name} (${valStr}) <span class="remove-btn">✕</span>`;
+    div.innerHTML = `${ingredientIconHtml(color)} ${INGREDIENTS[color].name} (${valStr}) <span class="remove-btn">✕</span>`;
     div.style.cursor = 'pointer';
     els.cartItems.appendChild(div);
   });

@@ -1,17 +1,16 @@
 // Old Jeb — grizzled moonshiner who lives for strong shine and loves the thrill.
 // He ALWAYS wants you to push harder. Even when it's suicidal.
 
-// Placeholder face keys — will be replaced by sprite assets
-// Asset designer: see character spec at bottom of file
+// Sprite images for each state
 const FACES = {
-  idle: '🧔',
-  tasting_low: '😐',
-  tasting_mid: '😏',
-  tasting_high: '😁',
-  tasting_great: '🤩',
-  worried: '😬',
-  scared: '🫣',
-  blowout: '🤬',
+  idle: 'assets/jeb/jeb_idle.png',
+  tasting_low: 'assets/jeb/jeb_tasting_low.png',
+  tasting_mid: 'assets/jeb/jeb_tasting_mid.png',
+  tasting_high: 'assets/jeb/jeb_tasting_high.png',
+  tasting_great: 'assets/jeb/jeb_tasting_great.png',
+  worried: 'assets/jeb/jeb_worried.png',
+  scared: 'assets/jeb/jeb_scared.png',
+  blowout: 'assets/jeb/jeb_blowout.png',
 };
 
 const PHRASES = {
@@ -172,7 +171,7 @@ function getState(player, threshold) {
 
 export function updateBrewmaster(container, player, threshold) {
   const state = getState(player, threshold);
-  const face = FACES[state] || '🧔';
+  const faceImg = FACES[state] || FACES.idle;
   const phrases = PHRASES[state] || PHRASES.idle;
 
   // Deterministic but varied phrase selection
@@ -180,7 +179,7 @@ export function updateBrewmaster(container, player, threshold) {
   const phrase = phrases[phraseIdx];
 
   container.innerHTML = `
-    <div class="brewmaster-portrait">${face}</div>
+    <div class="brewmaster-portrait"><img src="${faceImg}" alt="Old Jeb"></div>
     <div class="brewmaster-speech">
       <div class="brewmaster-name">Old Jeb</div>
       <div class="brewmaster-quote">"${phrase}"</div>

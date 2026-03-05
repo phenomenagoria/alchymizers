@@ -1,4 +1,4 @@
-import { TRACK, TRACK_MAX, INGREDIENTS, BLOWOUT_THRESHOLD } from '../engine/rules.js';
+import { TRACK, TRACK_MAX, INGREDIENTS, BLOWOUT_THRESHOLD, ingredientIconHtml } from '../engine/rules.js';
 
 // Render the pressure gauge (blowout meter) as visual segments
 export function renderPressure(segmentsEl, numberEl, statusEl, whiteTotal, threshold) {
@@ -140,7 +140,7 @@ export function renderPlacedChips(container, chips) {
 
     const icon = document.createElement('span');
     icon.className = 'chip-icon';
-    icon.textContent = INGREDIENTS[chip.color]?.icon || '?';
+    icon.innerHTML = ingredientIconHtml(chip.color);
     chipDiv.appendChild(icon);
 
     const value = document.createElement('span');

@@ -452,6 +452,21 @@ input[type="text"]:focus { outline: none; border-color: var(--copper-light); }
 
 .chip.white .chip-icon { filter: grayscale(0.5); }
 
+/* Ingredient icon images */
+.ingredient-icon {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  object-fit: contain;
+  vertical-align: middle;
+}
+.ingredient-icon-emoji { vertical-align: middle; }
+.chip-icon .ingredient-icon { width: 28px; height: 28px; }
+.mi-icon .ingredient-icon { width: 40px; height: 40px; }
+.cart-chip .ingredient-icon { width: 18px; height: 18px; }
+.chip-mystery .ingredient-icon { width: 32px; height: 32px; }
+.distill-chip-reveal .chip .ingredient-icon { width: 32px; height: 32px; }
+.still-pot-chips .chip-icon .ingredient-icon { width: 22px; height: 22px; }
+
 /* ===== Action Buttons ===== */
 .action-buttons {
   display: flex; gap: 0.8rem;
@@ -848,6 +863,14 @@ input[type="text"]:focus { outline: none; border-color: var(--copper-light); }
 }
 .brewmaster-portrait {
   font-size: 2rem; line-height: 1; flex-shrink: 0;
+  width: 56px; height: 56px;
+}
+.brewmaster-portrait img {
+  width: 100%; height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  object-fit: contain;
+  border-radius: 6px;
 }
 .brewmaster-speech { flex: 1; min-width: 0; }
 .brewmaster-name {

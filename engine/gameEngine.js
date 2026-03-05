@@ -296,7 +296,7 @@ function applyChipAbility(game, player, chip, movement) {
 
   switch (chip.color) {
     case 'red': {
-      // Charcoal: extra movement = number of orange chips already placed
+      // Rye: extra movement = number of orange chips already placed
       const orangeCount = player.pot.filter(c => c.color === 'orange').length;
       result.movement += orangeCount;
       break;
@@ -308,7 +308,7 @@ function applyChipAbility(game, player, chip, movement) {
       break;
     }
     case 'blue': {
-      // Copper Coil: trigger a bonus draw
+      // Apple: trigger a bonus draw
       result.blueDraw = true;
       break;
     }
@@ -329,7 +329,7 @@ function performBlueDraw(game, player) {
   if (bonusChip.color === 'white') {
     // Return white chip to bag (insert at start so it's not immediately re-drawn)
     player.bag.unshift(bonusChip);
-    game.log.push(`${player.name}: Copper Coil filtered out ${INGREDIENTS.white.name} ${bonusChip.value}!`);
+    game.log.push(`${player.name}: Apple filtered out ${INGREDIENTS.white.name} ${bonusChip.value}!`);
     return { chip: bonusChip, returned: true };
   }
 
@@ -351,7 +351,7 @@ function performBlueDraw(game, player) {
   player.position = Math.min(TRACK_MAX, player.position + movement);
 
   const chipName = INGREDIENTS[bonusChip.color]?.name || bonusChip.color;
-  game.log.push(`${player.name}: Copper Coil drew ${chipName} ${bonusChip.value} → position ${player.position}`);
+  game.log.push(`${player.name}: Apple drew ${chipName} ${bonusChip.value} → position ${player.position}`);
 
   return { chip: bonusChip, returned: false };
 }

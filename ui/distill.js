@@ -1,5 +1,5 @@
 // Distill phase UI module — the emotional core of the game
-import { INGREDIENTS, BLOWOUT_THRESHOLD, TRACK, TRACK_MAX } from '../engine/rules.js';
+import { INGREDIENTS, BLOWOUT_THRESHOLD, TRACK, TRACK_MAX, ingredientIconHtml } from '../engine/rules.js';
 
 // Animate a chip draw with suspense
 export function animateChipDraw(chipRevealEl, chip, onComplete) {
@@ -20,7 +20,7 @@ export function animateChipDraw(chipRevealEl, chip, onComplete) {
 
     const icon = document.createElement('span');
     icon.className = 'chip-icon';
-    icon.textContent = INGREDIENTS[chip.color]?.icon || '?';
+    icon.innerHTML = ingredientIconHtml(chip.color);
     chipDiv.appendChild(icon);
 
     const value = document.createElement('span');
@@ -110,7 +110,7 @@ export function renderDistillChips(container, chips) {
 
     const icon = document.createElement('span');
     icon.className = 'chip-icon';
-    icon.textContent = INGREDIENTS[chip.color]?.icon || '?';
+    icon.innerHTML = ingredientIconHtml(chip.color);
     chipDiv.appendChild(icon);
 
     const value = document.createElement('span');

@@ -5,7 +5,7 @@ export const BLOWOUT_THRESHOLD = 7;
 export const MAX_BUYS_PER_ROUND = 2;
 export const COPPER_PER_FLAME = 2; // copper bits to advance flame by 1
 
-// Spiral track (copper coil) - each space has coins, VP, and optional special
+// Proof track - each space has coins, VP (regulars), and optional special
 export const TRACK = [
   { pos: 0,  coins: 0,  vp: 0 },
   { pos: 1,  coins: 0,  vp: 0 },
@@ -50,6 +50,7 @@ export const INGREDIENTS = {
   white: {
     name: 'Bad Mash',
     icon: '🫧',
+    image: null,
     description: 'Spoiled mash. Too much causes a blowout!',
     values: [1, 2, 3],
     buyable: false,
@@ -57,6 +58,7 @@ export const INGREDIENTS = {
   orange: {
     name: 'Corn',
     icon: '🌽',
+    image: 'assets/ingredients/corn.png',
     description: 'Reliable base ingredient. No special ability.',
     values: [1],
     costs: { 1: 3 },
@@ -65,23 +67,26 @@ export const INGREDIENTS = {
   green: {
     name: 'Juniper',
     icon: '🌿',
-    description: 'If last or second-last chip is Juniper, gain 1 copper.',
+    image: 'assets/ingredients/juniper_berries.png',
+    description: 'If last or second-last drawn, gain 1 copper.',
     values: [1, 2, 4],
     costs: { 1: 4, 2: 8, 4: 14 },
     buyable: true,
   },
   red: {
-    name: 'Charcoal',
-    icon: '♨️',
-    description: 'Move extra spaces equal to corn chips already placed.',
+    name: 'Rye',
+    icon: '🌾',
+    image: 'assets/ingredients/rye.png',
+    description: 'Bonus movement equal to corn already in the still.',
     values: [1, 2, 4],
     costs: { 1: 6, 2: 10, 4: 16 },
     buyable: true,
   },
   blue: {
-    name: 'Copper Coil',
-    icon: '🔵',
-    description: 'Draw 1 more chip. If Bad Mash, return it; otherwise place it.',
+    name: 'Apple',
+    icon: '🍎',
+    image: 'assets/ingredients/apple.png',
+    description: 'Draws a bonus ingredient. Bad Mash gets filtered out!',
     values: [1, 2, 4],
     costs: { 1: 5, 2: 10, 4: 19 },
     buyable: true,
@@ -89,6 +94,7 @@ export const INGREDIENTS = {
   yellow: {
     name: 'Sugar',
     icon: '🍬',
+    image: 'assets/ingredients/sugar.png',
     description: 'Move 1 extra space per Sugar already placed.',
     values: [1, 2, 4],
     costs: { 1: 8, 2: 12, 4: 18 },
@@ -97,12 +103,23 @@ export const INGREDIENTS = {
   purple: {
     name: 'Ghost Pepper',
     icon: '🌶️',
-    description: 'End-of-round bonus: 1=1VP, 2=1copper, 3=2VP.',
+    image: 'assets/ingredients/chili_pepper.png',
+    description: 'End-of-round bonus: 1=1reg, 2=1copper, 3=2reg.',
     values: [1],
     costs: { 1: 9 },
     buyable: true,
   },
 };
+
+// Get ingredient icon as HTML (image with emoji fallback)
+export function ingredientIconHtml(color) {
+  const ing = INGREDIENTS[color];
+  if (!ing) return '?';
+  if (ing.image) {
+    return `<img src="${ing.image}" alt="${ing.name}" class="ingredient-icon">`;
+  }
+  return `<span class="ingredient-icon-emoji">${ing.icon}</span>`;
+}
 
 // Color display mapping
 export const COLOR_HEX = {
