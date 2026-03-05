@@ -178,9 +178,13 @@
         <h3>Bought:</h3>
         <div id="cart-items"></div>
       </div>
-      <div id="mulligan-buy" class="mulligan-buy hidden">
-        <button id="btn-buy-mulligan" class="btn btn-mulligan-buy">🐇 Buy Rabbit's Foot — Mulligan (2 🔶)</button>
-        <p class="mulligan-desc">Undo your last draw next brew phase (once per round)</p>
+      <div id="copper-options" class="copper-options hidden">
+        <div class="copper-options-label">Spend Copper (🔶 <span id="market-copper-count">0</span>)</div>
+        <div class="copper-options-buttons">
+          <button id="btn-spend-copper" class="btn btn-copper-option">🔥 Upgrade Still (+1 start) — 2 🔶</button>
+          <button id="btn-buy-mulligan" class="btn btn-copper-option">🐇 Rabbit's Foot (Mulligan) — 2 🔶</button>
+        </div>
+        <p class="copper-options-desc">Upgrade Still: begin each round further along. Mulligan: undo your last draw next brew (once per round).</p>
       </div>
       <button id="btn-done-buying" class="btn btn-primary btn-done-buying">Done Shopping</button>
     </div>
@@ -308,7 +312,7 @@
 
         <h3>Copper</h3>
         <p>Earn copper by <strong>bottling on</strong> a prime-numbered space (marked with 🔶 on the proof bar). Low primes (2–13) give 1 copper, high primes (17–31) give 2 copper. You must stop on the spot — passing through doesn't count!</p>
-        <p>Spend 2 copper at the market to buy a <strong>Rabbit's Foot (Mulligan)</strong> — this lets you undo your last draw once during the next brew phase.</p>
+        <p>Spend 2 copper at the market on either: <strong>Upgrade Still</strong> (advance your flame start by 1 — begin each round further along the track) or <strong>Rabbit's Foot (Mulligan)</strong> (undo your last draw once during the next brew phase).</p>
 
         <h3>Winning</h3>
         <p>After 9 rounds, the player with the most reputation wins. Ties broken by track position.</p>

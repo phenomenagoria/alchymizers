@@ -570,6 +570,17 @@ function cleanupRound(game) {
   }
 }
 
+// Spend copper to advance flame
+export function spendCopper(game, playerId) {
+  const player = game.players[playerId];
+  if (!player || player.copper < 2) return false;
+
+  player.copper -= 2;
+  player.flameStart = Math.min(TRACK_MAX, player.flameStart + 1);
+  game.log.push(`${player.name}: upgraded still — flame now at ${player.flameStart}.`);
+  return true;
+}
+
 // Buy Mulligan (Rabbit's Foot) at market — costs 2 copper, grants undo ability
 export function buyMulligan(game, playerId) {
   const player = game.players[playerId];

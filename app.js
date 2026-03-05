@@ -1,6 +1,6 @@
 import {
   createGame, startGame as engineStartGame, drawChip, stopDrawing,
-  buyIngredient, unbuyIngredient, finishBuying, buyMulligan, useMulligan,
+  buyIngredient, unbuyIngredient, finishBuying, spendCopper, buyMulligan, useMulligan,
   blowoutChoice, scoreRound, getLeaderboard, getWinner, getPlayerState, PHASES,
 } from './engine/gameEngine.js';
 import {
@@ -53,7 +53,8 @@ const els = {
   actionButtons: document.getElementById('action-buttons'),
   blowoutDollarsValue: document.getElementById('blowout-dollars-value'),
   blowoutRepValue: document.getElementById('blowout-rep-value'),
-  mulliganBuy: document.getElementById('mulligan-buy'),
+  copperOptions: document.getElementById('copper-options'),
+  marketCopperCount: document.getElementById('market-copper-count'),
   leaderboard: document.getElementById('leaderboard'),
   chatMessages: document.getElementById('chat-messages'),
   chatInput: document.getElementById('chat-input'),
@@ -232,6 +233,9 @@ function handleNetworkAction(payload) {
     case ACTIONS.BLOWOUT_CHOICE:
       blowoutChoice(game, payload.playerId, payload.data.choice);
       break;
+    case ACTIONS.SPEND_COPPER:
+      spendCopper(game, payload.playerId);
+      break;
     case ACTIONS.BUY_MULLIGAN:
       buyMulligan(game, payload.playerId);
       break;
@@ -406,9 +410,9 @@ function updateActionButtons(player) {
     els.actionButtons.classList.add('hidden');
   }
 
-  // Mulligan buy (show in market if player has 2+ copper and no mulligan yet)
-  const showMulligan = player.copper >= 2 && !player.hasMulligan && game.phase === PHASES.MARKET;
-  els.mulliganBuy.classList.toggle('hidden', !showMulligan);
+  // Copper options (show in market if player has 2+ copper)
+  const showCopperOpts = player.copper >= 2 && game.phase === PHASES.MARKET;
+  els.copperOptions.classList.toggle('hidden', !showCopperOpts);
 }
 
 let currentPhaseShown = null;
@@ -662,6 +666,17 @@ document.getElementById('btn-choose-rep').addEventListener('click', () => {
   }
 });
 
+// Spend copper to upgrade still
+document.getElementById('btn-spend-copper').addEventListener('click', () => {
+  if (networkMode === 'solo') {
+    spendCopper(game, myPlayerId);
+    refreshMarket();
+    updateUI();
+  } else {
+    network.sendAction(myPlayerId, ACTIONS.SPEND_COPPER);
+  }
+});
+
 // Buy Mulligan at market
 document.getElementById('btn-buy-mulligan').addEventListener('click', () => {
   if (networkMode === 'solo') {
@@ -711,9 +726,14 @@ function refreshMarket() {
 
   els.marketDollars.textContent = `$${player.dollars}`;
 
-  // Mulligan buy (inside market overlay)
-  const showMulligan = player.copper >= 2 && !player.hasMulligan;
-  els.mulliganBuy.classList.toggle('hidden', !showMulligan);
+  // Copper options (inside market overlay)
+  const showCopperOpts = player.copper >= 2;
+  els.copperOptions.classList.toggle('hidden', !showCopperOpts);
+  els.marketCopperCount.textContent = player.copper;
+  // Disable mulligan button if already has one
+  document.getElementById('btn-buy-mulligan').disabled = player.hasMulligan;
+  // Disable upgrade if not enough copper
+  document.getElementById('btn-spend-copper').disabled = player.copper < 2;
 
   // Render shop items with data attributes for event delegation
   const items = getShopItems(discount);
