@@ -378,7 +378,7 @@ function checkDistillPhaseEnd(game) {
 
 // ---- Scoring ----
 
-function scoreRound(game) {
+export function scoreRound(game) {
   game.phase = PHASES.SCORING;
 
   for (const pid of game.playerOrder) {
@@ -397,16 +397,17 @@ function scoreRound(game) {
     }
 
     if (player.blownOut) {
-      // Blown out players get coins by default (auto-choose)
-      // In multiplayer, this could be a choice, but we'll auto-assign coins
-      player.dollars += earnedDollars;
+      // Defer reward assignment — player must choose dollars or rep
+      player._needsBlowoutChoice = true;
+      player._blowoutEarnedDollars = earnedDollars;
+      player._blowoutEarnedRep = earnedRep;
 
       // Apply blowout penalty
       if (game.roundModifiers.blowoutPenalty) {
         player.reputation = Math.max(0, player.reputation - game.roundModifiers.blowoutPenalty);
       }
 
-      game.log.push(`${player.name}: blew out! Salvaged $${earnedDollars}.`);
+      game.log.push(`${player.name}: blew out! Must choose reward.`);
     } else {
       player.dollars += earnedDollars;
       player.reputation += earnedRep;
@@ -553,6 +554,11 @@ function cleanupRound(game) {
     player.chipCount = 0;
     player._doneBuying = false;
     player._blowoutChosen = false;
+    player._needsBlowoutChoice = false;
+    player._blowoutEarnedDollars = 0;
+    player._blowoutEarnedRep = 0;
+    player._skipMarket = false;
+    player._distillSent = false;
   }
 
   // Next round
@@ -581,21 +587,28 @@ export function spendCopper(game, playerId) {
 
 export function blowoutChoice(game, playerId, choice) {
   const player = game.players[playerId];
-  if (!player || !player.blownOut) return;
+  if (!player || !player.blownOut || !player._needsBlowoutChoice) return;
 
-  // Already handled in scoring - this is for the UI choice
-  // 'dollars' = keep dollars (default), 'reputation' = keep reputation instead
-  if (choice === 'reputation') {
-    const trackSpace = TRACK[player.position] || TRACK[TRACK_MAX];
-    let earnedRep = trackSpace.vp;
-    if (game.roundModifiers.doubleReputation) {
-      earnedRep *= 2;
-    }
-    // Reverse the auto-assigned dollars and give rep instead
-    const earnedDollars = trackSpace.coins + (game.roundModifiers.bonusDollars || 0);
-    player.dollars -= earnedDollars;
+  const earnedDollars = player._blowoutEarnedDollars || 0;
+  const earnedRep = player._blowoutEarnedRep || 0;
+
+  player._needsBlowoutChoice = false;
+
+  if (choice === 'dollars') {
+    player.dollars += earnedDollars;
+    game.log.push(`${player.name}: chose dollars ($${earnedDollars}).`);
+  } else {
+    // reputation — give rep and skip market
     player.reputation += earnedRep;
-    game.log.push(`${player.name}: chose reputation (${earnedRep}) over dollars.`);
+    player._skipMarket = true;
+    player._doneBuying = true;
+    game.log.push(`${player.name}: chose reputation (${earnedRep}), skipping market.`);
+
+    // Check if all players are done buying now
+    const allDone = game.playerOrder.every(pid => game.players[pid]._doneBuying);
+    if (allDone) {
+      cleanupRound(game);
+    }
   }
 }
 

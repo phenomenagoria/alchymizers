@@ -16,12 +16,13 @@
       </div>
       <h1 class="game-title">Alchymizers</h1>
       <p class="game-subtitle">Backcountry Moonshine Distillers</p>
-      <p class="game-version">v0.3.0</p>
+      <p class="game-version">v0.4.0</p>
 
       <div class="title-buttons">
         <button id="btn-solo" class="btn btn-primary">Play Solo</button>
         <button id="btn-create" class="btn btn-secondary">Create Room</button>
         <button id="btn-join" class="btn btn-secondary">Join Room</button>
+        <button id="btn-howto" class="btn btn-small">How to Play</button>
       </div>
 
       <div id="name-input-area" class="input-area">
@@ -136,23 +137,8 @@
 
         <!-- Action buttons -->
         <div id="action-buttons" class="action-buttons">
-          <button id="btn-draw" class="btn btn-draw">🎲 Draw</button>
-          <button id="btn-stop" class="btn btn-stop">✋ Stop</button>
-        </div>
-
-        <!-- Blowout choice -->
-        <div id="blowout-choice" class="blowout-choice hidden">
-          <div class="blowout-title">💥 BLOWOUT!</div>
-          <p>Your still blew its lid! Choose one reward:</p>
-          <div class="blowout-buttons">
-            <button id="btn-choose-dollars" class="btn btn-secondary">💵 Keep Dollars</button>
-            <button id="btn-choose-rep" class="btn btn-secondary">⭐ Keep Reputation</button>
-          </div>
-        </div>
-
-        <!-- Copper spending -->
-        <div id="copper-spend" class="copper-spend hidden">
-          <button id="btn-spend-copper" class="btn btn-small">🔥 Upgrade Still (2 copper → +1 start)</button>
+          <button id="btn-draw" class="btn btn-draw">🔥 Brew</button>
+          <button id="btn-stop" class="btn btn-stop">🍶 Bottle</button>
         </div>
 
         <!-- Collapsible sections -->
@@ -185,11 +171,14 @@
         <h2>Old Maggie's Supply Wagon</h2>
         <button id="btn-market-close" class="btn-close">✕</button>
       </div>
-      <p class="market-subtitle">Buy up to <span id="market-buy-limit">2</span> ingredients (different colors). You have <span id="market-dollars">$0</span>.</p>
+      <p class="market-subtitle">Buy up to <span id="market-buy-limit">2</span> ingredients (different types). You have <span id="market-dollars">$0</span>.</p>
       <div id="market-items" class="market-items"></div>
       <div id="market-cart" class="market-cart">
         <h3>Bought:</h3>
         <div id="cart-items"></div>
+      </div>
+      <div id="copper-spend" class="copper-spend hidden">
+        <button id="btn-spend-copper" class="btn btn-small">🔥 Upgrade Still (2 copper → +1 start)</button>
       </div>
       <button id="btn-done-buying" class="btn btn-primary btn-done-buying">Done Shopping</button>
     </div>
@@ -202,6 +191,120 @@
       <div id="endgame-winner" class="winner-display"></div>
       <div id="endgame-scores" class="endgame-scores"></div>
       <button id="btn-play-again" class="btn btn-primary">Play Again</button>
+    </div>
+  </div>
+
+  <!-- ===== DISTILL OVERLAY ===== -->
+  <div id="screen-distill" class="screen overlay distill-overlay">
+    <div class="distill-container">
+      <!-- Round info -->
+      <div class="distill-topbar">
+        <span id="distill-round">Round 1</span>
+        <span id="distill-bag-count" class="distill-bag-count">🎒 9</span>
+      </div>
+
+      <!-- Pressure Gauge (huge, prominent) -->
+      <div class="distill-pressure">
+        <div class="distill-pressure-label">Still Pressure</div>
+        <div class="distill-pressure-gauge">
+          <div class="distill-pressure-segments" id="distill-pressure-segments"></div>
+          <div class="distill-pressure-number" id="distill-pressure-number">0 / 7</div>
+        </div>
+        <div class="distill-pressure-status" id="distill-pressure-status">Stable</div>
+      </div>
+
+      <!-- Still Pot Visualization -->
+      <div class="distill-still-pot">
+        <div class="still-pot-body">
+          <div class="still-pot-liquid" id="distill-liquid"></div>
+          <div class="still-pot-chips" id="distill-chips">
+            <span class="still-empty">Brew to draw ingredients...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chip Reveal Area -->
+      <div class="distill-chip-reveal" id="distill-chip-reveal"></div>
+
+      <!-- Proof Track Mini -->
+      <div class="distill-proof" id="distill-proof">
+        <div class="distill-proof-bar">
+          <div class="distill-proof-fill" style="width: 0%"></div>
+        </div>
+        <div class="distill-proof-text">Position 0 — 💵 $0 ⭐ 0</div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="distill-actions">
+        <button id="btn-distill-draw" class="btn btn-brew">🔥 Brew</button>
+        <button id="btn-distill-stop" class="btn btn-bottle">🍶 Bottle</button>
+      </div>
+
+      <!-- Waiting message for multiplayer -->
+      <div id="distill-waiting" class="distill-waiting hidden">
+        Waiting for other distillers...
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BLOWOUT CHOICE OVERLAY ===== -->
+  <div id="screen-blowout" class="screen overlay blowout-overlay">
+    <div class="blowout-popup">
+      <div class="blowout-title">💥 BLOWOUT!</div>
+      <p class="blowout-subtitle">Your still blew its lid! Choose one reward:</p>
+      <div class="blowout-options">
+        <button id="btn-choose-dollars" class="blowout-option blowout-option-dollars">
+          <span class="blowout-option-icon">💵</span>
+          <span class="blowout-option-label">Keep Dollars</span>
+          <span class="blowout-option-value" id="blowout-dollars-value">$0</span>
+          <span class="blowout-option-note">Proceed to market</span>
+        </button>
+        <button id="btn-choose-rep" class="blowout-option blowout-option-rep">
+          <span class="blowout-option-icon">⭐</span>
+          <span class="blowout-option-label">Keep Reputation</span>
+          <span class="blowout-option-value" id="blowout-rep-value">0</span>
+          <span class="blowout-option-note">Skip market this round</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HOW TO PLAY OVERLAY ===== -->
+  <div id="screen-howto" class="screen overlay">
+    <div class="howto-container">
+      <div class="howto-header">
+        <h2>How to Play</h2>
+        <button id="btn-howto-close" class="btn-close">✕</button>
+      </div>
+      <div class="howto-body">
+        <h3>Goal</h3>
+        <p>Earn the most <strong>Reputation</strong> over 9 rounds of moonshine distilling. The distiller with the highest reputation wins!</p>
+
+        <h3>Round Flow</h3>
+        <ol>
+          <li><strong>Holler Card</strong> — A fortune event affects everyone.</li>
+          <li><strong>Brew Phase</strong> — Draw ingredients from your stash one at a time. Each ingredient moves you along the proof track. Stop anytime to lock in your score, or push further for bigger rewards. But watch the pressure gauge...</li>
+          <li><strong>Blowout!</strong> — If Bad Mash pressure exceeds 7, your still explodes! You choose to keep either the dollars or the reputation from your position, but not both.</li>
+          <li><strong>Market</strong> — Spend dollars to buy new ingredients for your stash (up to 2 different types per round).</li>
+        </ol>
+
+        <h3>Ingredients</h3>
+        <ul>
+          <li><strong>Bad Mash</strong> — Adds to still pressure. Too much = blowout!</li>
+          <li><strong>Corn</strong> — Reliable base. Moves you along the track.</li>
+          <li><strong>Juniper</strong> — If last or second-last drawn, gain 1 copper.</li>
+          <li><strong>Charcoal</strong> — Bonus movement equal to corn already placed.</li>
+          <li><strong>Copper Coil</strong> — Draws a bonus ingredient. If it's Bad Mash, it gets filtered out!</li>
+          <li><strong>Sugar</strong> — +1 bonus movement for each sugar already placed.</li>
+          <li><strong>Ghost Pepper</strong> — End-of-round bonuses based on how many you placed.</li>
+        </ul>
+
+        <h3>Copper</h3>
+        <p>Earn copper by landing on prime-numbered spaces on the track. Spend 2 copper during the market phase to advance your flame start position by 1 — you'll begin each round further along the track!</p>
+
+        <h3>Winning</h3>
+        <p>After 9 rounds, the player with the most reputation wins. Ties broken by track position.</p>
+      </div>
     </div>
   </div>
 

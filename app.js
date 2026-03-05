@@ -1,10 +1,10 @@
 import {
   createGame, startGame as engineStartGame, drawChip, stopDrawing,
   buyIngredient, unbuyIngredient, finishBuying, spendCopper, blowoutChoice,
-  getLeaderboard, getWinner, getPlayerState, PHASES,
+  scoreRound, getLeaderboard, getWinner, getPlayerState, PHASES,
 } from './engine/gameEngine.js';
 import {
-  TRACK, BLOWOUT_THRESHOLD, INGREDIENTS, TOTAL_ROUNDS,
+  TRACK, TRACK_MAX, BLOWOUT_THRESHOLD, INGREDIENTS, TOTAL_ROUNDS,
   getShopItems, MAX_BUYS_PER_ROUND,
 } from './engine/rules.js';
 import { renderPressure, renderProofGauge, renderPlacedChips, updatePlayerStats, showHollerCard, updateRoundPhase } from './ui/board.js';
@@ -13,6 +13,7 @@ import { addChatMessage, addSystemMessage, updateGameLog } from './ui/chat.js';
 import { createNetworkManager } from './network/peer.js';
 import { ACTIONS } from './network/messages.js';
 import { drawPixelScene } from './ui/pixelScene.js';
+import { animateChipDraw, updateStillLiquid, renderDistillProof, renderDistillChips } from './ui/distill.js';
 
 // ===== App State =====
 let game = null;
@@ -29,6 +30,9 @@ const screens = {
   game: document.getElementById('screen-game'),
   market: document.getElementById('screen-market'),
   endgame: document.getElementById('screen-endgame'),
+  howto: document.getElementById('screen-howto'),
+  blowout: document.getElementById('screen-blowout'),
+  distill: document.getElementById('screen-distill'),
 };
 
 const els = {
@@ -47,7 +51,8 @@ const els = {
   pressureStatus: document.getElementById('pressure-status'),
   hollerCard: document.getElementById('holler-card'),
   actionButtons: document.getElementById('action-buttons'),
-  blowoutChoice: document.getElementById('blowout-choice'),
+  blowoutDollarsValue: document.getElementById('blowout-dollars-value'),
+  blowoutRepValue: document.getElementById('blowout-rep-value'),
   copperSpend: document.getElementById('copper-spend'),
   leaderboard: document.getElementById('leaderboard'),
   chatMessages: document.getElementById('chat-messages'),
@@ -110,6 +115,14 @@ document.getElementById('btn-create').addEventListener('click', async () => {
   } catch (err) {
     els.titleStatus.textContent = `Failed to create room: ${err.message}`;
   }
+});
+
+// How to Play
+document.getElementById('btn-howto').addEventListener('click', () => {
+  showOverlay('howto');
+});
+document.getElementById('btn-howto-close').addEventListener('click', () => {
+  hideOverlay('howto');
 });
 
 // Join room
@@ -204,11 +217,8 @@ function handleNetworkAction(payload) {
   if (!game) return;
 
   switch (payload.action) {
-    case ACTIONS.DRAW:
-      drawChip(game, payload.playerId);
-      break;
-    case ACTIONS.STOP:
-      stopDrawing(game, payload.playerId);
+    case ACTIONS.DISTILL_COMPLETE:
+      storeDistillResult(payload.playerId, payload.data);
       break;
     case ACTIONS.BUY:
       buyIngredient(game, payload.playerId, payload.data.color, payload.data.value);
@@ -228,6 +238,30 @@ function handleNetworkAction(payload) {
   }
 
   updateUI();
+}
+
+// Store distill results from a remote player and check if all are done
+function storeDistillResult(playerId, data) {
+  const player = game.players[playerId];
+  if (!player) return;
+
+  // Apply the remote player's distill results
+  player.pot = data.pot;
+  player.position = data.position;
+  player.whiteTotal = data.whiteTotal;
+  player.blownOut = data.blownOut;
+  player.stopped = !data.blownOut;
+  player.bag = data.bag;
+
+  // Check if all players are done distilling
+  const allDone = game.playerOrder.every(pid => {
+    const p = game.players[pid];
+    return p.stopped || p.blownOut;
+  });
+
+  if (allDone) {
+    scoreRound(game);
+  }
 }
 
 // ===== Lobby =====
@@ -320,6 +354,11 @@ function updateUI() {
   if (screens.market.classList.contains('active')) {
     refreshMarket();
   }
+
+  // Refresh distill overlay if showing
+  if (screens.distill.classList.contains('active')) {
+    updateDistillOverlay();
+  }
 }
 
 function updateActionButtons(player) {
@@ -364,25 +403,36 @@ function updateActionButtons(player) {
     els.actionButtons.classList.add('hidden');
   }
 
-  // Show blowout choice if player blew out and hasn't chosen yet
-  const showBlowout = player.blownOut && !player._blowoutChosen &&
-    (game.phase === PHASES.DISTILL || game.phase === PHASES.SCORING || game.phase === PHASES.MARKET);
-  els.blowoutChoice.classList.toggle('hidden', !showBlowout);
-
-  // Copper spend (show during distill and market phases)
-  const showCopper = player.copper >= 2 && (game.phase === PHASES.DISTILL || game.phase === PHASES.MARKET);
+  // Copper spend (show during market phase only)
+  const showCopper = player.copper >= 2 && game.phase === PHASES.MARKET;
   els.copperSpend.classList.toggle('hidden', !showCopper);
 }
 
 let currentPhaseShown = null;
 
 function handlePhaseUI() {
-  if (game.phase === PHASES.MARKET) {
-    // Don't open market until blowout choice is resolved
-    const player = getPlayerState(game, myPlayerId);
-    const needsBlowoutChoice = player && player.blownOut && !player._blowoutChosen;
+  const player = getPlayerState(game, myPlayerId);
 
-    if (!needsBlowoutChoice && currentPhaseShown !== 'MARKET') {
+  // Show blowout overlay if player needs to choose
+  if (player && player._needsBlowoutChoice) {
+    els.blowoutDollarsValue.textContent = `$${player._blowoutEarnedDollars || 0}`;
+    els.blowoutRepValue.textContent = player._blowoutEarnedRep || 0;
+    showOverlay('blowout');
+    return; // Block other phase UI until choice is made
+  } else {
+    hideOverlay('blowout');
+  }
+
+  if (game.phase === PHASES.MARKET) {
+    if (player && player._skipMarket) {
+      // Player chose rep — skip market, auto-send done
+      if (currentPhaseShown !== 'MARKET_SKIPPED') {
+        currentPhaseShown = 'MARKET_SKIPPED';
+        if (networkMode !== 'solo') {
+          network.sendAction(myPlayerId, ACTIONS.DONE_BUYING);
+        }
+      }
+    } else if (currentPhaseShown !== 'MARKET') {
       currentPhaseShown = 'MARKET';
       showMarket();
     }
@@ -396,64 +446,197 @@ function handlePhaseUI() {
   }
 
   if (game.phase === PHASES.DISTILL) {
-    currentPhaseShown = 'DISTILL';
+    if (currentPhaseShown !== 'DISTILL') {
+      currentPhaseShown = 'DISTILL';
+      distillAnimating = false;
+      document.getElementById('distill-chip-reveal').innerHTML = '';
+      showOverlay('distill');
+      updateDistillOverlay();
+    }
+  } else {
+    hideOverlay('distill');
   }
 }
 
 // ===== Player Actions =====
 
-// Draw button
+// Draw button — always local (bags are pre-shuffled deterministically)
 document.getElementById('btn-draw').addEventListener('click', () => {
   if (!game || game.phase !== PHASES.DISTILL) return;
+  const player = getPlayerState(game, myPlayerId);
+  if (!player || player.stopped || player.blownOut) return;
+
+  drawChip(game, myPlayerId);
+  updateUI();
+
+  // Check if we're done after this draw (blew out or empty bag)
+  checkLocalDistillDone();
+});
+
+// Stop button — always local
+document.getElementById('btn-stop').addEventListener('click', () => {
+  if (!game || game.phase !== PHASES.DISTILL) return;
+  const player = getPlayerState(game, myPlayerId);
+  if (!player || player.stopped || player.blownOut) return;
+
+  stopDrawing(game, myPlayerId);
+  updateUI();
+
+  checkLocalDistillDone();
+});
+
+// After local player finishes distilling, send results to host for sync
+function checkLocalDistillDone() {
+  const player = getPlayerState(game, myPlayerId);
+  if (!player || (!player.stopped && !player.blownOut)) return;
+  if (player._distillSent) return;
+  player._distillSent = true;
 
   if (networkMode === 'solo') {
-    drawChip(game, myPlayerId);
-    updateUI();
+    // Solo: check if phase should advance (it should, since only 1 player)
+    return;
+  }
+
+  // Send our distill results to the host
+  network.sendAction(myPlayerId, ACTIONS.DISTILL_COMPLETE, {
+    pot: player.pot.map(c => ({ color: c.color, value: c.value })),
+    position: player.position,
+    whiteTotal: player.whiteTotal,
+    blownOut: player.blownOut,
+    bag: player.bag.map(c => ({ color: c.color, value: c.value })),
+  });
+}
+
+// ===== Distill Overlay =====
+let distillAnimating = false;
+
+function updateDistillOverlay() {
+  if (!game) return;
+  const player = getPlayerState(game, myPlayerId);
+  if (!player) return;
+
+  const threshold = BLOWOUT_THRESHOLD - (game.roundModifiers.thresholdReduction || 0);
+
+  // Round info
+  document.getElementById('distill-round').textContent = `Round ${game.round}`;
+  document.getElementById('distill-bag-count').textContent = `🎒 ${player.bag.length}`;
+
+  // Pressure gauge
+  renderPressure(
+    document.getElementById('distill-pressure-segments'),
+    document.getElementById('distill-pressure-number'),
+    document.getElementById('distill-pressure-status'),
+    player.whiteTotal, threshold
+  );
+
+  // Still pot chips and liquid
+  renderDistillChips(document.getElementById('distill-chips'), player.pot);
+  updateStillLiquid(document.getElementById('distill-liquid'), player.pot.length, 12);
+
+  // Proof
+  renderDistillProof(document.getElementById('distill-proof'), player.position);
+
+  // Button states
+  const canAct = !player.stopped && !player.blownOut;
+  document.getElementById('btn-distill-draw').disabled = !canAct || player.bag.length === 0;
+  document.getElementById('btn-distill-stop').disabled = !canAct;
+
+  // Waiting message
+  const waiting = document.getElementById('distill-waiting');
+  if (player.stopped || player.blownOut) {
+    waiting.classList.remove('hidden');
+    document.getElementById('btn-distill-draw').classList.add('hidden');
+    document.getElementById('btn-distill-stop').classList.add('hidden');
   } else {
-    network.sendAction(myPlayerId, ACTIONS.DRAW);
+    waiting.classList.add('hidden');
+    document.getElementById('btn-distill-draw').classList.remove('hidden');
+    document.getElementById('btn-distill-stop').classList.remove('hidden');
+  }
+}
+
+// Distill overlay Brew button
+document.getElementById('btn-distill-draw').addEventListener('click', () => {
+  if (!game || game.phase !== PHASES.DISTILL || distillAnimating) return;
+  const player = getPlayerState(game, myPlayerId);
+  if (!player || player.stopped || player.blownOut) return;
+
+  distillAnimating = true;
+  document.getElementById('btn-distill-draw').disabled = true;
+  document.getElementById('btn-distill-stop').disabled = true;
+
+  const result = drawChip(game, myPlayerId);
+
+  if (result && result.chip) {
+    // Animate the chip reveal
+    animateChipDraw(
+      document.getElementById('distill-chip-reveal'),
+      result.chip,
+      () => {
+        // If blue chip triggered a bonus draw, animate that too
+        if (result.blueChip && !result.blueChip.returned) {
+          animateChipDraw(
+            document.getElementById('distill-chip-reveal'),
+            result.blueChip.chip,
+            () => {
+              distillAnimating = false;
+              updateUI();
+              updateDistillOverlay();
+              checkLocalDistillDone();
+            }
+          );
+        } else {
+          distillAnimating = false;
+          updateUI();
+          updateDistillOverlay();
+          checkLocalDistillDone();
+        }
+      }
+    );
+  } else {
+    distillAnimating = false;
+    updateUI();
+    updateDistillOverlay();
+    checkLocalDistillDone();
   }
 });
 
-// Stop button
-document.getElementById('btn-stop').addEventListener('click', () => {
-  if (!game || game.phase !== PHASES.DISTILL) return;
+// Distill overlay Bottle button
+document.getElementById('btn-distill-stop').addEventListener('click', () => {
+  if (!game || game.phase !== PHASES.DISTILL || distillAnimating) return;
+  const player = getPlayerState(game, myPlayerId);
+  if (!player || player.stopped || player.blownOut) return;
 
-  if (networkMode === 'solo') {
-    stopDrawing(game, myPlayerId);
-    updateUI();
-  } else {
-    network.sendAction(myPlayerId, ACTIONS.STOP);
-  }
+  stopDrawing(game, myPlayerId);
+  updateUI();
+  updateDistillOverlay();
+  checkLocalDistillDone();
 });
 
 // Blowout choices
 document.getElementById('btn-choose-dollars').addEventListener('click', () => {
-  const player = getPlayerState(game, myPlayerId);
-  if (player) player._blowoutChosen = true;
-
   if (networkMode === 'solo') {
     blowoutChoice(game, myPlayerId, 'dollars');
-    // Reset so handlePhaseUI can now open the market
     currentPhaseShown = null;
+    hideOverlay('blowout');
     updateUI();
   } else {
     network.sendAction(myPlayerId, ACTIONS.BLOWOUT_CHOICE, { choice: 'dollars' });
     currentPhaseShown = null;
+    hideOverlay('blowout');
     updateUI();
   }
 });
 
 document.getElementById('btn-choose-rep').addEventListener('click', () => {
-  const player = getPlayerState(game, myPlayerId);
-  if (player) player._blowoutChosen = true;
-
   if (networkMode === 'solo') {
     blowoutChoice(game, myPlayerId, 'reputation');
     currentPhaseShown = null;
+    hideOverlay('blowout');
     updateUI();
   } else {
     network.sendAction(myPlayerId, ACTIONS.BLOWOUT_CHOICE, { choice: 'reputation' });
     currentPhaseShown = null;
+    hideOverlay('blowout');
     updateUI();
   }
 });
@@ -505,6 +688,10 @@ function refreshMarket() {
   const maxBuys = game.roundModifiers.buyLimit || MAX_BUYS_PER_ROUND;
 
   els.marketDollars.textContent = `$${player.dollars}`;
+
+  // Copper spend (inside market overlay)
+  const showCopper = player.copper >= 2;
+  els.copperSpend.classList.toggle('hidden', !showCopper);
 
   // Render shop items with data attributes for event delegation
   const items = getShopItems(discount);
@@ -634,6 +821,8 @@ function showEndgame() {
 document.getElementById('btn-play-again').addEventListener('click', () => {
   game = null;
   lobbyPlayers = [];
+  currentPhaseShown = null;
+  distillAnimating = false;
   if (network) {
     network.destroy();
     network = null;

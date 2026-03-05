@@ -135,6 +135,26 @@ export function showHollerCard(cardEl, card) {
   cardEl.classList.remove('hidden');
   cardEl.querySelector('.holler-name').textContent = `📜 ${card.name}`;
   cardEl.querySelector('.holler-desc').textContent = card.desc;
+
+  // Expandable mechanical description
+  let mechEl = cardEl.querySelector('.holler-mechanical');
+  if (!mechEl) {
+    mechEl = document.createElement('details');
+    mechEl.className = 'holler-mechanical';
+    const summary = document.createElement('summary');
+    summary.textContent = 'What it does';
+    mechEl.appendChild(summary);
+    const desc = document.createElement('div');
+    desc.className = 'holler-mechanical-text';
+    mechEl.appendChild(desc);
+    cardEl.appendChild(mechEl);
+  }
+  if (card.mechanicalDesc) {
+    mechEl.style.display = '';
+    mechEl.querySelector('.holler-mechanical-text').textContent = card.mechanicalDesc;
+  } else {
+    mechEl.style.display = 'none';
+  }
 }
 
 // Update round/phase display
