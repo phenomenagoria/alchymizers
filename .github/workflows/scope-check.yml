@@ -1,0 +1,107 @@
+name: Scope Check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  scope-check:
+    name: Plan Compliance
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract issue number from PR
+        id: issue
+        run: |
+          # Try PR body first (Closes #N pattern)
+          ISSUE=$(echo "${{ github.event.pull_request.body }}" | grep -oP 'Closes #\K[0-9]+' | head -1)
+
+          # Fallback: extract from branch name (claude/42-description)
+          if [ -z "$ISSUE" ]; then
+            BRANCH="${{ github.head_ref }}"
+            ISSUE=$(echo "$BRANCH" | grep -oP '(?:claude/)?(\d+)' | head -1 | grep -oP '\d+')
+          fi
+
+          if [ -z "$ISSUE" ]; then
+            echo "::warning::Could not extract issue number. Skipping scope check."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "number=$ISSUE" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check plan exists
+        if: steps.issue.outputs.skip != 'true'
+        id: plan
+        run: |
+          PLAN_FILE=".treeline/plans/plan-${{ steps.issue.outputs.number }}.md"
+          if [ ! -f "$PLAN_FILE" ]; then
+            echo "::warning::No plan file found at $PLAN_FILE. Skipping scope check."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=$PLAN_FILE" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract allowed files from plan
+        if: steps.issue.outputs.skip != 'true' && steps.plan.outputs.skip != 'true'
+        id: allowed
+        run: |
+          PLAN="${{ steps.plan.outputs.path }}"
+
+          # Extract files from "Files to Modify" and "Files to Create" sections
+          ALLOWED=$(awk '
+            /^## Files/,/^## [^F]/ {
+              if (/^- `/) {
+                match($0, /`([^`]+)`/, arr)
+                if (arr[1]) print arr[1]
+              }
+            }
+          ' "$PLAN" | sort -u)
+
+          echo "$ALLOWED" > /tmp/allowed-files.txt
+          echo "Allowed files from plan:"
+          cat /tmp/allowed-files.txt
+
+      - name: Get changed files
+        if: steps.issue.outputs.skip != 'true' && steps.plan.outputs.skip != 'true'
+        id: changed
+        run: |
+          CHANGED=$(git diff --name-only origin/main...${{ github.event.pull_request.head.sha }} | sort -u)
+          echo "$CHANGED" > /tmp/changed-files.txt
+          echo "Changed files in PR:"
+          cat /tmp/changed-files.txt
+
+      - name: Compare files
+        if: steps.issue.outputs.skip != 'true' && steps.plan.outputs.skip != 'true'
+        run: |
+          VIOLATIONS=""
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+
+            # Always-allowed patterns
+            if echo "$file" | grep -qE '\.(test|spec)\.(ts|js|tsx|jsx)$'; then continue; fi
+            if echo "$file" | grep -q '^\.treeline/'; then continue; fi
+            if echo "$file" | grep -qE '(package-lock\.json|yarn\.lock|pnpm-lock\.yaml)$'; then continue; fi
+
+            if ! grep -qxF "$file" /tmp/allowed-files.txt; then
+              VIOLATIONS="${VIOLATIONS}  - ${file}\n"
+            fi
+          done < /tmp/changed-files.txt
+
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::Scope violation — PR modifies files not listed in the plan:"
+            echo -e "$VIOLATIONS"
+            echo ""
+            echo "Allowed files (from plan):"
+            cat /tmp/allowed-files.txt
+            exit 1
+          else
+            echo "All changed files are within plan scope."
+          fi

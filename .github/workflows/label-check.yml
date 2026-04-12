@@ -1,0 +1,81 @@
+name: Label Check
+
+on:
+  issues:
+    types: [opened, labeled, unlabeled]
+  pull_request:
+    types: [opened, labeled, unlabeled]
+
+jobs:
+  label-check:
+    name: Validate Labels
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Check issue labels
+        if: github.event_name == 'issues'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.issue.labels.map(l => l.name);
+
+            // Check for exactly one status label
+            const statusLabels = labels.filter(l => l.startsWith('status:'));
+            if (statusLabels.length === 0) {
+              core.info('No status label — might be a non-Treeline issue. Skipping.');
+              return;
+            }
+            if (statusLabels.length > 1) {
+              core.setFailed(`Issue has multiple status labels: ${statusLabels.join(', ')}. Must have exactly one.`);
+              return;
+            }
+
+            // Check for project label (warn, don't fail)
+            const projectLabels = labels.filter(l => l.startsWith('project:'));
+            if (projectLabels.length === 0) {
+              core.warning('Issue has no project label.');
+            }
+            if (projectLabels.length > 1) {
+              core.setFailed(`Issue has multiple project labels: ${projectLabels.join(', ')}. Must have at most one.`);
+              return;
+            }
+
+            // Check for priority label (warn, don't fail)
+            const priorityLabels = labels.filter(l => l.match(/^p[0-3]-/));
+            if (priorityLabels.length === 0 && statusLabels[0] !== 'status:proposal') {
+              core.warning('Issue has no priority label.');
+            }
+
+            // Validate no conflicting states
+            if (labels.includes('status:done') && labels.includes('agent:claimed')) {
+              core.setFailed('Issue is status:done but still has agent:claimed label.');
+              return;
+            }
+
+            core.info(`Labels OK: ${labels.join(', ')}`);
+
+      - name: Check PR labels
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.pull_request.labels.map(l => l.name);
+
+            // PRs from Treeline branches should have labels
+            const branch = context.payload.pull_request.head.ref;
+            const isTreelinePR = branch.startsWith('claude/');
+
+            if (!isTreelinePR) {
+              core.info('Not a Treeline PR. Skipping label check.');
+              return;
+            }
+
+            // Treeline PRs should link to an issue
+            const body = context.payload.pull_request.body || '';
+            const hasIssueRef = /Closes #\d+/i.test(body) || /Fixes #\d+/i.test(body);
+            if (!hasIssueRef) {
+              core.warning('Treeline PR does not reference an issue (expected "Closes #N" in body).');
+            }
+
+            core.info(`PR labels OK: ${labels.join(', ')}`);

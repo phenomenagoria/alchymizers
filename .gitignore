@@ -1,0 +1,7 @@
+
+# Treeline
+.treeline/state/
+.treeline/reports/
+.stryker-tmp/
+reports/mutation/
+reports/stryker-incremental.json

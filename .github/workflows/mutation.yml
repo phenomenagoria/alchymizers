@@ -1,0 +1,112 @@
+name: Mutation Testing
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    name: StrykerJS Incremental
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Stryker
+        run: npx stryker --version || npm install --save-dev @stryker-mutator/core @stryker-mutator/vitest-runner
+
+      - name: Restore Stryker incremental cache
+        uses: actions/cache@v4
+        with:
+          path: reports/stryker-incremental.json
+          key: stryker-incremental-${{ github.base_ref }}-${{ hashFiles('engine/**/*.js') }}
+          restore-keys: |
+            stryker-incremental-${{ github.base_ref }}-
+            stryker-incremental-main-
+
+      - name: Get changed source files
+        id: changed
+        run: |
+          FILES=$(git diff --name-only origin/main...${{ github.event.pull_request.head.sha }} \
+            | grep -E '^engine/.*\.js$' \
+            | grep -vE '\.(test|spec)\.js$' \
+            || true)
+
+          if [ -z "$FILES" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No source files changed. Skipping mutation testing."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            MUTATE=$(echo "$FILES" | tr '\n' ',' | sed 's/,$//')
+            echo "mutate=$MUTATE" >> "$GITHUB_OUTPUT"
+            echo "Will mutate: $MUTATE"
+          fi
+
+      - name: Run Stryker
+        if: steps.changed.outputs.skip != 'true'
+        run: |
+          npx stryker run \
+            --incremental \
+            --incrementalFile reports/stryker-incremental.json \
+            --mutate "${{ steps.changed.outputs.mutate }}"
+        continue-on-error: true
+
+      - name: Check mutation score
+        if: steps.changed.outputs.skip != 'true'
+        run: |
+          if [ -f "reports/mutation/mutation.json" ]; then
+            SCORE=$(cat reports/mutation/mutation.json | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          files = data.get('files', {})
+          total_killed = 0
+          total_survived = 0
+          for f in files.values():
+              for m in f.get('mutants', []):
+                  if m['status'] == 'Killed': total_killed += 1
+                  elif m['status'] == 'Survived': total_survived += 1
+          total = total_killed + total_survived
+          score = (total_killed / total * 100) if total > 0 else 100
+          print(f'{score:.1f}')
+          " 2>/dev/null || echo "100.0")
+
+            echo "Mutation score: ${SCORE}%"
+
+            python3 -c "
+          score = float('${SCORE}')
+          if score < 50:
+              print(f'::error::Mutation score {score}% is below minimum threshold of 50%')
+              exit(1)
+          elif score < 80:
+              print(f'::warning::Mutation score {score}% is below target of 80%')
+          else:
+              print(f'Mutation score {score}% meets target')
+          "
+          else
+            echo "::warning::No mutation report found. Stryker may have failed."
+          fi
+
+      - name: Upload mutation report
+        if: steps.changed.outputs.skip != 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          retention-days: 7

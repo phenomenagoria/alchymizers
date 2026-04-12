@@ -1,0 +1,24 @@
+{
+  "name": "alchymizers",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Alchymizers — Backcountry Moonshine Distillers. A P2P multiplayer browser board game.",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:mutation": "npx stryker run --incremental",
+    "test:mutation:full": "npx stryker run",
+    "lint": "echo 'lint: no-op until ESLint is wired (see IMPLEMENTATION.md Known Broken)'",
+    "verify": "npm run lint && npm run test && npm run test:mutation",
+    "serve": "npx http-server . -p 8080"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "fast-check": "^4.6.0",
+    "@stryker-mutator/core": "^8.7.1",
+    "@stryker-mutator/vitest-runner": "^8.7.1"
+  }
+}
